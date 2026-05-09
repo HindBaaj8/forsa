@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+
+/* ═══════════════════════════════════════════
+   TOKENS — فرصة عمل
+   أزرق داكن  #1e3a6e  |  ذهبي  #d4a017  |  أبيض
+═══════════════════════════════════════════ */
+:root {
+  /* navy */
+  --n950: #080f1e;
+  --n900: #0f2040;
+  --n800: #1a3360;
+  --n700: #1e3a6e;
+  --n600: #254a8a;
+  --n500: #2e5ba8;
+  --n400: #4a7cc9;
+  --n300: #7aa3dd;
+  --n100: #dce8f8;
+  --n50:  #eef4fc;
+
+  /* gold */
+  --g700: #9a6f00;
+  --g600: #b8880a;
+  --g500: #d4a017;
+  --g400: #e0b535;
+  --g300: #eac96a;
+  --g100: #fdf3d0;
+  --g50:  #fefaee;
+
+  /* neutrals */
+  --white:    #ffffff;
+  --bg:       #f7f9fc;
+  --gray50:   #f8fafc;
+  --gray100:  #f1f5f9;
+  --gray200:  #e2e8f0;
+  --gray300:  #cbd5e1;
+  --gray400:  #94a3b8;
+  --gray500:  #64748b;
+  --gray600:  #475569;
+  --gray700:  #334155;
+  --gray900:  #0f172a;
+
+  /* semantic */
+  --text1:   #0f2040;
+  --text2:   #334155;
+  --text3:   #64748b;
+  --border:  #e2e8f0;
+  --success: #059669;
+  --error:   #dc2626;
+
+  /* shadows */
+  --sh-xs: 0 1px 3px rgba(30,58,110,.06);
+  --sh-sm: 0 2px 8px rgba(30,58,110,.09);
+  --sh-md: 0 4px 18px rgba(30,58,110,.12);
+  --sh-lg: 0 8px 32px rgba(30,58,110,.16);
+  --sh-xl: 0 16px 48px rgba(30,58,110,.2);
+
+  /* radius */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+}
+
+/* ═══════════════════════════════════════════ RESET */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Cairo', sans-serif;
+  background: var(--bg);
+  color: var(--text1);
+  direction: rtl;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+button, input, select, textarea { font-family: 'Cairo', sans-serif; }
+a { text-decoration: none; color: inherit; }
+img { display: block; max-width: 100%; }
+
+/* ═══════════════════════════════════════════ ANIMATIONS */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+@keyframes blob1 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  50%      { transform: translate(20px,-28px) scale(1.05); }
+}
+@keyframes blob2 {
+  0%,100% { transform: translate(0,0) scale(1); }
+  50%      { transform: translate(-16px,22px) scale(1.04); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse {
+  0%,100% { opacity:1; } 50% { opacity:.5; }
+}
+
+.au  { animation: fadeUp .5s ease both; }
+.au1 { animation: fadeUp .5s .07s ease both; }
+.au2 { animation: fadeUp .5s .14s ease both; }
+.au3 { animation: fadeUp .5s .21s ease both; }
+.au4 { animation: fadeUp .5s .28s ease both; }
