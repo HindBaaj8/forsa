@@ -2,9 +2,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// Get conversations
 export const getConversations = createAsyncThunk(
-  'messages/conversations',
+  'messages/getConversations',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/conversations');
@@ -15,26 +14,49 @@ export const getConversations = createAsyncThunk(
   }
 );
 
-// Get messages for a conversation
 export const getMessages = createAsyncThunk(
-  'messages/get',
+  'messages/getMessages',
   async (conversationId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/conversations/${conversationId}/messages`);
-      return { conversationId, messages: response.data.messages };
+      return { conversationId, messages: response.data.data };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-// Send message
 export const sendMessage = createAsyncThunk(
-  'messages/send',
+  'messages/sendMessage',
   async ({ conversationId, message }, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/conversations/${conversationId}/messages`, { message });
-      return { conversationId, message: response.data.message };
+      const response = await api.post('/messages', { conversation_id: conversationId, message });
+      return { conversationId, message: response.data.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+export const markAsRead = createAsyncThunk(
+  'messages/markAsRead',
+  async (conversationId, { rejectWithValue }) => {
+    try {
+      await api.put(`/conversations/${conversationId}/read-all`);
+      return conversationId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+// ✅ أضف هاد الـ Thunk
+export const startConversation = createAsyncThunk(
+  'messages/startConversation',
+  async ({ worker_id }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/conversations', { worker_id });
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
@@ -54,24 +76,12 @@ const messagesSlice = createSlice({
     setCurrentConversation: (state, action) => {
       state.currentConversation = action.payload;
     },
-    addNewMessage: (state, action) => {
+    addMessage: (state, action) => {
       const { conversationId, message } = action.payload;
       if (!state.messages[conversationId]) {
         state.messages[conversationId] = [];
       }
       state.messages[conversationId].push(message);
-      
-      // Update last message in conversation
-      const convIndex = state.conversations.findIndex(c => c.id === conversationId);
-      if (convIndex !== -1) {
-        state.conversations[convIndex].last_message = message.body;
-        state.conversations[convIndex].last_message_time = message.created_at;
-      }
-    },
-    updateUnreadCount: (state, action) => {
-      const { conversationId, count } = action.payload;
-      const conv = state.conversations.find(c => c.id === conversationId);
-      if (conv) conv.unread_count = count;
     },
   },
   extraReducers: (builder) => {
@@ -82,7 +92,7 @@ const messagesSlice = createSlice({
       })
       .addCase(getConversations.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.conversations = action.payload.conversations;
+        state.conversations = action.payload?.data?.data || action.payload?.data || [];
       })
       .addCase(getConversations.rejected, (state, action) => {
         state.isLoading = false;
@@ -90,7 +100,14 @@ const messagesSlice = createSlice({
       })
       // Get Messages
       .addCase(getMessages.fulfilled, (state, action) => {
-        state.messages[action.payload.conversationId] = action.payload.messages;
+        const { conversationId, messages: msgs } = action.payload;
+        state.messages[conversationId] = msgs?.map(msg => ({
+          id: msg.id,
+          body: msg.message,
+          is_me: msg.sender?.id !== state.currentConversation?.participant?.id,
+          is_read: msg.is_read,
+          created_at: msg.created_at,
+        })) || [];
       })
       // Send Message
       .addCase(sendMessage.fulfilled, (state, action) => {
@@ -98,10 +115,38 @@ const messagesSlice = createSlice({
         if (!state.messages[conversationId]) {
           state.messages[conversationId] = [];
         }
-        state.messages[conversationId].push(message);
+        state.messages[conversationId].push({
+          id: message.id,
+          body: message.message,
+          is_me: true,
+          is_read: false,
+          created_at: message.created_at,
+        });
+      })
+      // Mark as Read
+      .addCase(markAsRead.fulfilled, (state, action) => {
+        const conversationId = action.payload;
+        if (state.messages[conversationId]) {
+          state.messages[conversationId] = state.messages[conversationId].map(msg => ({
+            ...msg,
+            is_read: true,
+          }));
+        }
+      })
+      // ✅ أضف هاد الـ case لـ startConversation
+      .addCase(startConversation.fulfilled, (state, action) => {
+        const newConversation = action.payload?.data || action.payload;
+        if (newConversation && newConversation.id) {
+          // التحقق إذا كانت المحادثة موجودة مسبقاً
+          const exists = state.conversations.some(c => c.id === newConversation.id);
+          if (!exists) {
+            state.conversations = [newConversation, ...state.conversations];
+          }
+          state.currentConversation = newConversation;
+        }
       });
   },
 });
 
-export const { setCurrentConversation, addNewMessage, updateUnreadCount } = messagesSlice.actions;
+export const { setCurrentConversation, addMessage } = messagesSlice.actions;
 export default messagesSlice.reducer;

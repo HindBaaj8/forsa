@@ -2,7 +2,7 @@
 import { useSelector } from 'react-redux';
 import NotificationDropdown from '../common/NotificationDropdown';
 
-export default function Topbar({ title }) {
+export default function Topbar({ title, onChatToggle }) {
   const { user } = useSelector((state) => state.auth);
 
   return (
@@ -14,7 +14,10 @@ export default function Topbar({ title }) {
           <input type="text" placeholder="بحث..." />
         </div>
         
-        {/* Use the NotificationDropdown component */}
+        <button className="topbar__chat" onClick={onChatToggle}>
+          💬
+        </button>
+        
         <NotificationDropdown />
         
         <div className="topbar__user">
@@ -31,6 +34,26 @@ export default function Topbar({ title }) {
           </div>
         </div>
       </div>
+
+      <style>{`
+        .topbar__chat {
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          border: 1.5px solid var(--gray200);
+          background: var(--white);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .topbar__chat:hover {
+          background: var(--n50);
+          border-color: var(--n300);
+        }
+      `}</style>
     </header>
   );
 }

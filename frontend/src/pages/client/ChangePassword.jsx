@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import ClientLayout from '../../components/layout/ClientLayout';
-import { logout } from '../../features/auth/authSlice';
+import api from '../../services/api';
 
 export default function ChangePassword() {
   const navigate = useNavigate();
@@ -56,18 +56,26 @@ export default function ChangePassword() {
     
     setLoading(true);
     
-    // Mock API call - replace with real API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simulate success (in real app, check if current password is correct)
-    if (formData.current_password === '12345678') {
+    try {
+      // ✅ استدعاء API حقيقي
+      const response = await api.post('/user/change-password', {
+        current_password: formData.current_password,
+        new_password: formData.new_password,
+        new_password_confirmation: formData.confirm_password,
+      });
+      
       toast.success('تم تغيير كلمة المرور بنجاح');
       navigate('/client/settings');
-    } else {
-      setErrors({ current_password: 'كلمة المرور الحالية غير صحيحة' });
+    } catch (error) {
+      const message = error.response?.data?.message || 'حدث خطأ';
+      if (message.includes('current')) {
+        setErrors({ current_password: 'كلمة المرور الحالية غير صحيحة' });
+      } else {
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (

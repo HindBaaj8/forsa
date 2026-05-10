@@ -1,101 +1,37 @@
 // pages/worker/WorkerMessages.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { getConversations, getMessages, sendMessage, markAsRead, setCurrentConversation } from '../../features/messages/messagesSlice';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { toast } from 'react-hot-toast';
-
-// Mock data for conversations
-const MOCK_CONVERSATIONS = [
-  {
-    id: 1,
-    client_name: 'أحمد العلوي',
-    client_avatar: 'أ',
-    client_id: 101,
-    last_message: 'متى تقدر تجي تصلح المكيف؟',
-    last_message_time: 'قبل 5 دقائق',
-    unread_count: 2,
-    online: true,
-    service: 'تركيب مكيف هواء',
-  },
-  {
-    id: 2,
-    client_name: 'فاطمة الزهراء',
-    client_avatar: 'ف',
-    client_id: 102,
-    last_message: 'شكراً على الخدمة الممتازة',
-    last_message_time: 'قبل ساعة',
-    unread_count: 0,
-    online: false,
-    service: 'إصلاح تسريب ماء',
-  },
-  {
-    id: 3,
-    client_name: 'محمد العمري',
-    client_avatar: 'م',
-    client_id: 103,
-    last_message: 'هل يمكنك الحضور غداً؟',
-    last_message_time: 'أمس',
-    unread_count: 1,
-    online: true,
-    service: 'طلاء المنزل',
-  },
-  {
-    id: 4,
-    client_name: 'سارة بناني',
-    client_avatar: 'س',
-    client_id: 104,
-    last_message: 'تم استلام الطلب، شكراً',
-    last_message_time: 'منذ يومين',
-    unread_count: 0,
-    online: false,
-    service: 'تركيب مطبخ',
-  },
-];
-
-// Mock messages for each conversation
-const MOCK_MESSAGES = {
-  1: [
-    { id: 1, sender: 'client', text: 'السلام عليكم، عندي مكيف ما كيبرش مزيان', time: '10:30', date: '2024-01-15' },
-    { id: 2, sender: 'worker', text: 'وعليكم السلام. واش نوع المكيف؟', time: '10:32', date: '2024-01-15' },
-    { id: 3, sender: 'client', text: 'سبليط 18000 وحدة', time: '10:33', date: '2024-01-15' },
-    { id: 4, sender: 'worker', text: 'ممتاز. متى تقدر نجي نشوفو؟', time: '10:35', date: '2024-01-15' },
-    { id: 5, sender: 'client', text: 'ممكن غداً العصر؟', time: '10:36', date: '2024-01-15' },
-    { id: 6, sender: 'worker', text: 'حاضر، غادي نكون عندك الساعة 3', time: '10:38', date: '2024-01-15' },
-  ],
-  2: [
-    { id: 1, sender: 'client', text: 'شكراً جزيلاً على الخدمة', time: '14:20', date: '2024-01-14' },
-    { id: 2, sender: 'worker', text: 'العفو، تحت أمرك في أي وقت', time: '14:22', date: '2024-01-14' },
-    { id: 3, sender: 'client', text: 'راح ننصح بيك لأصحابي', time: '14:25', date: '2024-01-14' },
-  ],
-  3: [
-    { id: 1, sender: 'client', text: 'هل يمكنك الحضور غداً صباحاً؟', time: '09:15', date: '2024-01-13' },
-    { id: 2, sender: 'worker', text: 'نعم ممكن، شنو الساعة المناسبة؟', time: '09:18', date: '2024-01-13' },
-    { id: 3, sender: 'client', text: 'الساعة 10 صباحاً', time: '09:20', date: '2024-01-13' },
-  ],
-  4: [
-    { id: 1, sender: 'client', text: 'تم استلام الطلب، شكراً', time: '16:00', date: '2024-01-12' },
-    { id: 2, sender: 'worker', text: 'شكراً لك، نتمنى تكون راضي', time: '16:05', date: '2024-01-12' },
-  ],
-};
+import { getEcho } from '../../services/echo';
+import { formatDistanceToNow } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 function ConversationItem({ conv, isActive, onClick }) {
+  const getTimeAgo = (date) => {
+    if (!date) return '';
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ar });
+  };
+
   return (
     <div className={`msg-conv ${isActive ? 'active' : ''}`} onClick={() => onClick(conv)}>
       <div className="msg-conv__av">
-        {conv.client_avatar}
-        {conv.online && <span className="msg-conv__online" />}
+        {conv.participant?.name?.[0] || '?'}
+        {conv.participant?.online && <span className="msg-conv__online" />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-          <div className="msg-conv__name">{conv.client_name}</div>
-          <div className="msg-conv__time">{conv.last_message_time}</div>
+          <div className="msg-conv__name">{conv.participant?.name || 'عميل'}</div>
+          <div className="msg-conv__time">{getTimeAgo(conv.last_message_at)}</div>
         </div>
-        <div className="msg-conv__last">{conv.last_message}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-light)', marginTop: 2 }}>
-          📋 {conv.service}
-        </div>
+        <div className="msg-conv__last">{conv.last_message || 'بدء محادثة جديدة'}</div>
+        {conv.request && (
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+            📋 {conv.request.title}
+          </div>
+        )}
       </div>
       {conv.unread_count > 0 && (
         <div className="msg-conv__badge">{conv.unread_count}</div>
@@ -108,101 +44,93 @@ function MessageBubble({ message, isMe }) {
   return (
     <div className={`msg-bubble msg-bubble--${isMe ? 'me' : 'them'}`}>
       <div className={`msg-text msg-text--${isMe ? 'me' : 'them'}`}>
-        {message.text}
+        {message.body}
       </div>
       <div className={`msg-time msg-time--${isMe ? 'me' : ''}`}>
-        {message.time}
+        {new Date(message.created_at).toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' })}
+        {isMe && message.is_read && <span className="msg-read"> ✓✓</span>}
       </div>
     </div>
   );
 }
 
 export default function WorkerMessages() {
-  const [conversations, setConversations] = useState([]);
-  const [activeConversation, setActiveConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const dispatch = useDispatch();
+  const { conversations, currentConversation, messages, isLoading } = useSelector((state) => state.messages);
   const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
-  const { user } = useSelector((state) => state.auth);
+  const token = localStorage.getItem('token');
 
+  // Load conversations on mount
   useEffect(() => {
-    // Load conversations
-    const loadConversations = async () => {
-      setIsLoading(true);
-      await new Promise(r => setTimeout(r, 800));
-      setConversations(MOCK_CONVERSATIONS);
-      if (MOCK_CONVERSATIONS.length > 0) {
-        setActiveConversation(MOCK_CONVERSATIONS[0]);
-        setMessages(MOCK_MESSAGES[1] || []);
-      }
-      setIsLoading(false);
-    };
-    loadConversations();
-  }, []);
+    dispatch(getConversations());
+  }, [dispatch]);
 
+  // Load messages when conversation changes
   useEffect(() => {
-    // Scroll to bottom when messages change
+    if (currentConversation) {
+      dispatch(getMessages(currentConversation.id));
+      dispatch(markAsRead(currentConversation.id));
+    }
+  }, [currentConversation, dispatch]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, currentConversation]);
+
+  // Setup real-time listener
+  useEffect(() => {
+    if (!currentConversation || !token) return;
+    
+    const echo = getEcho();
+    if (!echo) return;
+    
+    const channel = echo.private(`conversation.${currentConversation.id}`);
+    channel.listen('.message.sent', (data) => {
+      console.log('New message received:', data);
+      dispatch({
+        type: 'messages/addMessage',
+        payload: {
+          conversationId: currentConversation.id,
+          message: {
+            id: data.id,
+            body: data.message,
+            is_me: data.sender_id !== currentConversation.participant?.id,
+            is_read: false,
+            created_at: data.created_at,
+          }
+        }
+      });
+    });
+    
+    return () => {
+      echo.leave(`conversation.${currentConversation.id}`);
+    };
+  }, [currentConversation, token, dispatch]);
 
   const handleSelectConversation = (conv) => {
-    setActiveConversation(conv);
-    setMessages(MOCK_MESSAGES[conv.id] || []);
-    
-    // Mark as read
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === conv.id ? { ...c, unread_count: 0 } : c
-      )
-    );
+    dispatch(setCurrentConversation(conv));
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !activeConversation) return;
+    if (!newMessage.trim() || !currentConversation || sending) return;
     
-    setIsSending(true);
-    
-    const newMsg = {
-      id: Date.now(),
-      sender: 'worker',
-      text: newMessage.trim(),
-      time: new Date().toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' }),
-      date: new Date().toISOString().split('T')[0],
-    };
-    
-    setMessages(prev => [...prev, newMsg]);
+    setSending(true);
+    const messageText = newMessage;
     setNewMessage('');
     
-    // Update last message in conversation list
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === activeConversation.id
-          ? { ...c, last_message: newMessage.trim(), last_message_time: 'الآن' }
-          : c
-      )
-    );
-    
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 500));
-    
-    // Simulate worker response (for demo)
-    if (newMessage.trim().includes('شكرا') || newMessage.trim().includes('مشكور')) {
-      setTimeout(() => {
-        const autoReply = {
-          id: Date.now() + 1,
-          sender: 'client',
-          text: 'العفو، تحت أمرك دائماً 🤝',
-          time: new Date().toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' }),
-          date: new Date().toISOString().split('T')[0],
-        };
-        setMessages(prev => [...prev, autoReply]);
-        toast.success('تم استلام رد من العميل');
-      }, 1000);
+    try {
+      await dispatch(sendMessage({ 
+        conversationId: currentConversation.id, 
+        message: messageText 
+      })).unwrap();
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setSending(false);
     }
-    
-    setIsSending(false);
   };
 
   const handleKeyPress = (e) => {
@@ -212,7 +140,7 @@ export default function WorkerMessages() {
     }
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading && conversations.length === 0) return <LoadingSpinner />;
 
   return (
     <WorkerLayout title="الرسائل">
@@ -226,47 +154,49 @@ export default function WorkerMessages() {
           {/* Sidebar - Conversations List */}
           <div className="msg-sidebar">
             <div className="msg-sidebar__search">
-              🔍 بحث عن محادثة...
+              <span>🔍</span>
+              <input type="text" placeholder="بحث عن محادثة..." />
             </div>
             <div className="msg-list">
-              {conversations.map(conv => (
-                <ConversationItem
-                  key={conv.id}
-                  conv={conv}
-                  isActive={activeConversation?.id === conv.id}
-                  onClick={handleSelectConversation}
-                />
-              ))}
-              {conversations.length === 0 && (
+              {conversations.length === 0 ? (
                 <div className="empty-state" style={{ padding: 40 }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>💬</div>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
                   <div>لا توجد محادثات بعد</div>
                   <div style={{ fontSize: 12, marginTop: 8 }}>
-                    ستظهر هنا المحادثات عندما تتواصل مع العملاء
+                    ستظهر هنا المحادثات عندما يتواصل العملاء معك
                   </div>
                 </div>
+              ) : (
+                conversations.map((conv) => (
+                  <ConversationItem
+                    key={conv.id}
+                    conv={conv}
+                    isActive={currentConversation?.id === conv.id}
+                    onClick={handleSelectConversation}
+                  />
+                ))
               )}
             </div>
           </div>
 
           {/* Main Chat Area */}
-          {activeConversation ? (
+          {currentConversation ? (
             <div className="msg-main">
               <div className="msg-topbar">
                 <div className="msg-conv__av" style={{ width: 40, height: 40, fontSize: 16 }}>
-                  {activeConversation.client_avatar}
-                  {activeConversation.online && <span className="msg-conv__online" />}
+                  {currentConversation.participant?.name?.[0] || '?'}
+                  {currentConversation.participant?.online && <span className="msg-conv__online" />}
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>
-                    {activeConversation.client_name}
+                    {currentConversation.participant?.name || 'عميل'}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>
-                    ● {activeConversation.online ? 'متصل الآن' : 'غير متصل'}
+                    ● {currentConversation.participant?.online ? 'متصل الآن' : 'غير متصل'}
                   </div>
                 </div>
                 <div style={{ marginRight: 'auto', display: 'flex', gap: 8 }}>
-                  <Link to={`/worker/orders/${activeConversation.id}`}>
+                  <Link to={`/worker/orders/${currentConversation.id}`}>
                     <button className="btn btn--ghost btn--sm" title="عرض الطلب">
                       📋
                     </button>
@@ -278,13 +208,20 @@ export default function WorkerMessages() {
               </div>
 
               <div className="msg-body">
-                {messages.map((msg, index) => (
-                  <MessageBubble
-                    key={index}
-                    message={msg}
-                    isMe={msg.sender === 'worker'}
-                  />
-                ))}
+                {messages[currentConversation.id]?.length === 0 ? (
+                  <div className="empty-state" style={{ padding: 40 }}>
+                    <div>لا توجد رسائل بعد</div>
+                    <div style={{ fontSize: 12, marginTop: 8 }}>كن أول من يرسل رسالة</div>
+                  </div>
+                ) : (
+                  messages[currentConversation.id]?.map((msg, index) => (
+                    <MessageBubble
+                      key={index}
+                      message={msg}
+                      isMe={msg.is_me}
+                    />
+                  ))
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -297,13 +234,14 @@ export default function WorkerMessages() {
                   onKeyDown={handleKeyPress}
                   rows={1}
                   style={{ resize: 'none', fontFamily: 'Cairo, sans-serif' }}
+                  disabled={sending}
                 />
                 <button
                   className="msg-send"
                   onClick={handleSendMessage}
-                  disabled={isSending || !newMessage.trim()}
+                  disabled={sending || !newMessage.trim()}
                 >
-                  {isSending ? '⏳' : '➤'}
+                  {sending ? '⏳' : '➤'}
                 </button>
               </div>
             </div>
@@ -311,7 +249,7 @@ export default function WorkerMessages() {
             <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>اختر محادثة للبدء</div>
-              <div style={{ fontSize: 13, color: 'var(--text-light)' }}>
+              <div style={{ fontSize: 13, color: 'var(--text3)' }}>
                 من هنا ستتواصل مع عملائك
               </div>
             </div>

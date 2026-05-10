@@ -2,7 +2,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// Search workers
+// البحث عن عمال (لـ Client)
 export const searchWorkers = createAsyncThunk(
   'workers/search',
   async ({ query, category, city }, { rejectWithValue }) => {
@@ -15,7 +15,7 @@ export const searchWorkers = createAsyncThunk(
   }
 );
 
-// Get filters (categories, cities)
+// جلب الفلاتر (لـ Client)
 export const getFilters = createAsyncThunk(
   'workers/filters',
   async (_, { rejectWithValue }) => {
@@ -49,15 +49,26 @@ const workersSlice = createSlice({
       })
       .addCase(searchWorkers.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.workers = action.payload.workers;
+        state.workers = action.payload?.data?.data || action.payload?.workers || [];
       })
       .addCase(searchWorkers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
       // Filters
+      .addCase(getFilters.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(getFilters.fulfilled, (state, action) => {
-        state.filters = action.payload;
+        state.isLoading = false;
+        state.filters = {
+          categories: action.payload?.categories || ['الكل', 'كهرباء', 'سباكة', 'نجارة', 'دهان', 'تنظيف', 'طبخ', 'تصميم'],
+          cities: action.payload?.cities || ['الدار البيضاء', 'الرباط', 'طنجة', 'مراكش', 'فاس'],
+        };
+      })
+      .addCase(getFilters.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       });
   },
 });

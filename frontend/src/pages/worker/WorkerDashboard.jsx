@@ -2,57 +2,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { getWorkerDashboard } from '../../features/worker/workerSlice';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-//import { getWorkerStats, getRecentOrders } from '../../features/worker/workerSlice';
-
-// Mock data for testing
-const MOCK_STATS = {
-  totalEarnings: 12500,
-  completedOrders: 42,
-  pendingOrders: 8,
-  rating: 4.8,
-  totalReviews: 156,
-};
-
-const MOCK_RECENT_ORDERS = [
-  {
-    id: 1,
-    client_name: 'أحمد العلوي',
-    client_avatar: 'أ',
-    service: 'تركيب مكيف',
-    date: '2024-01-15',
-    price: 350,
-    status: 'completed',
-  },
-  {
-    id: 2,
-    client_name: 'فاطمة الزهراء',
-    client_avatar: 'ف',
-    service: 'إصلاح تسريب ماء',
-    date: '2024-01-14',
-    price: 200,
-    status: 'completed',
-  },
-  {
-    id: 3,
-    client_name: 'محمد العمري',
-    client_avatar: 'م',
-    service: 'طلاء المنزل',
-    date: '2024-01-16',
-    price: 800,
-    status: 'in_progress',
-  },
-  {
-    id: 4,
-    client_name: 'سارة بناني',
-    client_avatar: 'س',
-    service: 'تركيب مطبخ',
-    date: '2024-01-17',
-    price: 1200,
-    status: 'pending',
-  },
-];
 
 function StatCard({ icon, label, value, color, trend }) {
   return (
@@ -70,24 +22,25 @@ function StatCard({ icon, label, value, color, trend }) {
 }
 
 export default function WorkerDashboard() {
-  const [stats, setStats] = useState(MOCK_STATS);
-  const [recentOrders, setRecentOrders] = useState(MOCK_RECENT_ORDERS);
-  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useDispatch();
+  const { dashboard, isLoading } = useSelector((state) => state.worker);
   const { user } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Simulate API call
-    const loadData = async () => {
-      setIsLoading(true);
-      await new Promise(r => setTimeout(r, 800));
-      setStats(MOCK_STATS);
-      setRecentOrders(MOCK_RECENT_ORDERS);
-      setIsLoading(false);
-    };
-    loadData();
-  }, []);
+    dispatch(getWorkerDashboard());
+  }, [dispatch]);
 
   if (isLoading) return <LoadingSpinner />;
+
+  const stats = dashboard?.stats || {
+    totalEarnings: 0,
+    completedOrders: 0,
+    pendingOrders: 0,
+    rating: 0,
+    totalReviews: 0,
+  };
+
+  const recentOrders = dashboard?.recentOrders || [];
 
   return (
     <WorkerLayout title="الرئيسية">
@@ -144,46 +97,59 @@ export default function WorkerDashboard() {
           آخر الطلبات
           <Link to="/worker/orders" className="card-link">عرض الكل →</Link>
         </div>
-        <div className="orders-table">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>العميل</th>
-                <th>الخدمة</th>
-                <th>التاريخ</th>
-                <th>السعر</th>
-                <th>الحالة</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.map(order => (
-                <tr key={order.id}>
-                  <td>
-                    <div className="orders-table__client">
-                      <div className="orders-table__avatar">{order.client_avatar}</div>
-                      {order.client_name}
-                    </div>
-                  </td>
-                  <td>{order.service}</td>
-                  <td>{order.date}</td>
-                  <td>{order.price} درهم</td>
-                  <td>
-                    <span className={`badge badge--${order.status}`}>
-                      {order.status === 'completed' ? 'مكتمل' : 
-                       order.status === 'in_progress' ? 'قيد التنفيذ' : 'بانتظار التأكيد'}
-                    </span>
-                  </td>
-                  <td>
-                    <Link to={`/worker/orders/${order.id}`}>
-                      <button className="btn btn--ghost btn--sm">تفاصيل</button>
-                    </Link>
-                  </td>
+        {recentOrders.length === 0 ? (
+          <div className="empty-state">
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📦</div>
+            <div style={{ fontWeight: 700 }}>لا توجد طلبات حديثة</div>
+            <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 8 }}>
+              ستظهر هنا أحدث طلباتك عندما تستلمها
+            </div>
+          </div>
+        ) : (
+          <div className="orders-table">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>العميل</th>
+                  <th>الخدمة</th>
+                  <th>التاريخ</th>
+                  <th>السعر</th>
+                  <th>الحالة</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {recentOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <div className="orders-table__client">
+                        <div className="orders-table__avatar">
+                          {order.client_name?.[0] || 'ع'}
+                        </div>
+                        {order.client_name}
+                      </div>
+                    </td>
+                    <td>{order.service_name || order.service}</td>
+                    <td>{order.date || order.created_at?.split('T')[0]}</td>
+                    <td>{order.price} درهم</td>
+                    <td>
+                      <span className={`badge badge--${order.status}`}>
+                        {order.status === 'completed' ? 'مكتمل' : 
+                         order.status === 'in_progress' ? 'قيد التنفيذ' : 
+                         order.status === 'accepted' ? 'تم القبول' : 'بانتظار التأكيد'}
+                      </span>
+                    </td>
+                    <td>
+                      <Link to={`/worker/orders/${order.id}`}>
+                        <button className="btn btn--ghost btn--sm">تفاصيل</button>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Quick Tips */}

@@ -1,76 +1,20 @@
 // pages/worker/WorkerOrders.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+import { useDispatch, useSelector } from 'react-redux';
+import { getWorkerOrders, acceptOrder, startOrder, completeOrder, cancelOrder } from '../../features/worker/workerSlice';
 import WorkerLayout from '../../components/layout/WorkerLayout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import toast from 'react-hot-toast';
 
-const MOCK_ORDERS = [
-  {
-    id: 1,
-    client_name: 'أحمد العلوي',
-    client_avatar: 'أ',
-    client_phone: '0612345678',
-    service: 'تركيب مكيف هواء',
-    description: 'مكيف سبليت 18000 وحدة需要在 غرفة النوم الرئيسية',
-    date: '2024-01-15',
-    time: '15:00',
-    price: 350,
-    address: 'الدار البيضاء، حي الأندلس',
-    status: 'pending',
-    created_at: '2024-01-10',
-  },
-  {
-    id: 2,
-    client_name: 'فاطمة الزهراء',
-    client_avatar: 'ف',
-    client_phone: '0623456789',
-    service: 'إصلاح تسريب ماء',
-    description: 'تسريب في حمام الضيوف، يقطر الماء من السقف',
-    date: '2024-01-16',
-    time: '10:00',
-    price: 200,
-    address: 'الرباط، سلا',
-    status: 'accepted',
-    created_at: '2024-01-12',
-  },
-  {
-    id: 3,
-    client_name: 'محمد العمري',
-    client_avatar: 'م',
-    client_phone: '0634567890',
-    service: 'طلاء المنزل',
-    description: 'طلاء 3 غرف + صالون، الدهان أبيض مع لمسات رمادية',
-    date: '2024-01-18',
-    time: '09:00',
-    price: 800,
-    address: 'طنجة، مركز المدينة',
-    status: 'in_progress',
-    created_at: '2024-01-08',
-  },
-  {
-    id: 4,
-    client_name: 'سارة بناني',
-    client_avatar: 'س',
-    client_phone: '0645678901',
-    service: 'تركيب مطبخ',
-    description: 'مطبخ جديد يحتاج إلى تركيب وتوصيل المياه والكهرباء',
-    date: '2024-01-20',
-    time: '14:00',
-    price: 1200,
-    address: 'مراكش، جليز',
-    status: 'completed',
-    created_at: '2024-01-05',
-  },
-];
-
-function OrderCard({ order, onAccept, onReject, onComplete }) {
+function OrderCard({ order, onAccept, onStart, onComplete, onCancel }) {
   const getStatusBadge = () => {
     switch (order.status) {
-      case 'pending': return <span className="badge badge--pending">بانتظار الموافقة</span>;
-      case 'accepted': return <span className="badge badge--active">تم القبول</span>;
-      case 'in_progress': return <span className="badge badge--progress">قيد التنفيذ</span>;
-      case 'completed': return <span className="badge badge--completed">مكتمل</span>;
+      case 'pending': return <span className="badge badge--pending">⏳ بانتظار الموافقة</span>;
+      case 'accepted': return <span className="badge badge--active">✅ تم القبول</span>;
+      case 'in_progress': return <span className="badge badge--progress">🔨 قيد التنفيذ</span>;
+      case 'completed': return <span className="badge badge--completed">🎉 مكتمل</span>;
+      case 'cancelled': return <span className="badge badge--cancel">❌ ملغي</span>;
       default: return <span className="badge badge--active">{order.status}</span>;
     }
   };
@@ -79,7 +23,9 @@ function OrderCard({ order, onAccept, onReject, onComplete }) {
     <div className="order-card">
       <div className="order-card__header">
         <div className="order-card__client">
-          <div className="order-card__client-av">{order.client_avatar}</div>
+          <div className="order-card__client-av">
+            {order.client_name?.[0] || 'ع'}
+          </div>
           <div>
             <div className="order-card__client-name">{order.client_name}</div>
             <div className="order-card__client-phone">📞 {order.client_phone}</div>
@@ -89,7 +35,7 @@ function OrderCard({ order, onAccept, onReject, onComplete }) {
       </div>
 
       <div className="order-card__service">
-        <div className="order-card__service-title">{order.service}</div>
+        <div className="order-card__service-title">{order.service_name || order.service}</div>
         <p className="order-card__service-desc">{order.description}</p>
       </div>
 
@@ -98,14 +44,14 @@ function OrderCard({ order, onAccept, onReject, onComplete }) {
           <span>📅</span>
           <div>
             <div className="order-card__detail-label">التاريخ</div>
-            <div>{order.date}</div>
+            <div>{order.date || order.scheduled_date || order.created_at?.split('T')[0]}</div>
           </div>
         </div>
         <div className="order-card__detail">
           <span>⏰</span>
           <div>
             <div className="order-card__detail-label">الوقت</div>
-            <div>{order.time}</div>
+            <div>{order.time || order.scheduled_time || 'مرن'}</div>
           </div>
         </div>
         <div className="order-card__detail">
@@ -128,24 +74,24 @@ function OrderCard({ order, onAccept, onReject, onComplete }) {
         {order.status === 'pending' && (
           <>
             <button className="btn btn--success btn--sm" onClick={() => onAccept(order.id)}>
-              قبول الطلب ✓
+              ✓ قبول الطلب
             </button>
-            <button className="btn btn--danger btn--sm" onClick={() => onReject(order.id)}>
-              رفض الطلب ✗
+            <button className="btn btn--danger btn--sm" onClick={() => onCancel(order.id)}>
+              ✗ رفض الطلب
             </button>
           </>
         )}
         {order.status === 'accepted' && (
-          <button className="btn btn--navy btn--sm" onClick={() => onComplete(order.id)}>
-            بدء العمل →
+          <button className="btn btn--navy btn--sm" onClick={() => onStart(order.id)}>
+            🔨 بدء العمل →
           </button>
         )}
         {order.status === 'in_progress' && (
           <>
             <button className="btn btn--success btn--sm" onClick={() => onComplete(order.id)}>
-              تأكيد الإنجاز ✓
+              ✓ تأكيد الإنجاز
             </button>
-            <Link to={`/worker/messages/${order.id}`}>
+            <Link to={`/worker/messages`}>
               <button className="btn btn--outline btn--sm">
                 💬 تواصل مع العميل
               </button>
@@ -165,52 +111,66 @@ function OrderCard({ order, onAccept, onReject, onComplete }) {
 }
 
 export default function WorkerOrders() {
-  const [orders, setOrders] = useState([]);
+  const dispatch = useDispatch();
+  const { orders, isLoading } = useSelector((state) => state.worker);
   const [filter, setFilter] = useState('all');
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadOrders = async () => {
-      setIsLoading(true);
-      await new Promise(r => setTimeout(r, 800));
-      setOrders(MOCK_ORDERS);
-      setIsLoading(false);
-    };
-    loadOrders();
-  }, []);
+    dispatch(getWorkerOrders());
+  }, [dispatch]);
 
-  const handleAccept = (id) => {
-    setOrders(orders.map(order => 
-      order.id === id ? { ...order, status: 'accepted' } : order
-    ));
-    toast.success('تم قبول الطلب بنجاح');
+  const handleAccept = async (id) => {
+    try {
+      await dispatch(acceptOrder(id)).unwrap();
+      toast.success('تم قبول الطلب بنجاح');
+      dispatch(getWorkerOrders());
+    } catch (error) {
+      toast.error('حدث خطأ');
+    }
   };
 
-  const handleReject = (id) => {
-    setOrders(orders.filter(order => order.id !== id));
-    toast.success('تم رفض الطلب');
+  const handleCancel = async (id) => {
+    if (!window.confirm('هل أنت متأكد من رفض هذا الطلب؟')) return;
+    try {
+      await dispatch(cancelOrder(id)).unwrap();
+      toast.success('تم رفض الطلب');
+      dispatch(getWorkerOrders());
+    } catch (error) {
+      toast.error('حدث خطأ');
+    }
   };
 
-  const handleComplete = (id) => {
-    const order = orders.find(o => o.id === id);
-    const newStatus = order.status === 'accepted' ? 'in_progress' : 'completed';
-    setOrders(orders.map(order => 
-      order.id === id ? { ...order, status: newStatus } : order
-    ));
-    toast.success(newStatus === 'in_progress' ? 'تم بدء العمل' : 'تم تأكيد الإنجاز');
+  const handleStart = async (id) => {
+    try {
+      await dispatch(startOrder(id)).unwrap();
+      toast.success('تم بدء العمل');
+      dispatch(getWorkerOrders());
+    } catch (error) {
+      toast.error('حدث خطأ');
+    }
   };
 
-  const filteredOrders = orders.filter(order => {
+  const handleComplete = async (id) => {
+    try {
+      await dispatch(completeOrder(id)).unwrap();
+      toast.success('تم تأكيد الإنجاز');
+      dispatch(getWorkerOrders());
+    } catch (error) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  const filteredOrders = orders?.filter(order => {
     if (filter === 'all') return true;
     return order.status === filter;
-  });
+  }) || [];
 
   const counts = {
-    all: orders.length,
-    pending: orders.filter(o => o.status === 'pending').length,
-    accepted: orders.filter(o => o.status === 'accepted').length,
-    in_progress: orders.filter(o => o.status === 'in_progress').length,
-    completed: orders.filter(o => o.status === 'completed').length,
+    all: orders?.length || 0,
+    pending: orders?.filter(o => o.status === 'pending').length || 0,
+    accepted: orders?.filter(o => o.status === 'accepted').length || 0,
+    in_progress: orders?.filter(o => o.status === 'in_progress').length || 0,
+    completed: orders?.filter(o => o.status === 'completed').length || 0,
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -220,6 +180,30 @@ export default function WorkerOrders() {
       <div className="page-header">
         <div className="page-header__title">الطلبات الواردة</div>
         <div className="page-header__sub">جميع طلبات العملاء التي تخص خدماتك</div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="order-stats">
+        <div className="order-stat" onClick={() => setFilter('all')}>
+          <div className="order-stat__num">{counts.all}</div>
+          <div className="order-stat__label">جميع الطلبات</div>
+        </div>
+        <div className="order-stat" onClick={() => setFilter('pending')}>
+          <div className="order-stat__num order-stat__num--pending">{counts.pending}</div>
+          <div className="order-stat__label">قيد الانتظار</div>
+        </div>
+        <div className="order-stat" onClick={() => setFilter('accepted')}>
+          <div className="order-stat__num order-stat__num--accepted">{counts.accepted}</div>
+          <div className="order-stat__label">تم القبول</div>
+        </div>
+        <div className="order-stat" onClick={() => setFilter('in_progress')}>
+          <div className="order-stat__num order-stat__num--progress">{counts.in_progress}</div>
+          <div className="order-stat__label">قيد التنفيذ</div>
+        </div>
+        <div className="order-stat" onClick={() => setFilter('completed')}>
+          <div className="order-stat__num order-stat__num--completed">{counts.completed}</div>
+          <div className="order-stat__label">مكتملة</div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -276,7 +260,8 @@ export default function WorkerOrders() {
               key={order.id} 
               order={order}
               onAccept={handleAccept}
-              onReject={handleReject}
+              onCancel={handleCancel}
+              onStart={handleStart}
               onComplete={handleComplete}
             />
           ))}

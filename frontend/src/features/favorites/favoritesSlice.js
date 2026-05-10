@@ -7,7 +7,8 @@ export const getFavorites = createAsyncThunk(
   'favorites/get',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/client/favorites');
+      const response = await api.get('/favorites');
+      // هاد هو الرابط الصحيح حسب routes/api.php
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
@@ -57,7 +58,14 @@ const favoritesSlice = createSlice({
       })
       .addCase(getFavorites.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.favorites = action.payload.favorites;
+        // هاد التصحيح مهم: استخرج البيانات من action.payload
+        if (action.payload?.data?.data) {
+          state.favorites = action.payload.data.data;
+        } else if (Array.isArray(action.payload)) {
+          state.favorites = action.payload;
+        } else {
+          state.favorites = [];
+        }
       })
       .addCase(getFavorites.rejected, (state, action) => {
         state.isLoading = false;
@@ -65,7 +73,10 @@ const favoritesSlice = createSlice({
       })
       // Add
       .addCase(addFavorite.fulfilled, (state, action) => {
-        state.favorites.push(action.payload.favorite);
+        const newFavorite = action.payload?.data || action.payload;
+        if (newFavorite && newFavorite.id) {
+          state.favorites = [newFavorite, ...state.favorites];
+        }
       })
       // Remove
       .addCase(removeFavorite.fulfilled, (state, action) => {

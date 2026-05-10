@@ -1,29 +1,15 @@
 // pages/worker/WorkerServices.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { getWorkerServices, createService, updateService, deleteService } from '../../features/worker/workerSlice';
 import WorkerLayout from '../../components/layout/WorkerLayout';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
 export default function WorkerServices() {
-  const [services, setServices] = useState([
-    {
-      id: 1,
-      title: "تركيب مكيفات هواء",
-      description: "تركيب وصيانة جميع أنواع المكيفات، خبرة 5 سنوات في المجال",
-      images: ["https://via.placeholder.com/300x200?text=AC+Installation"],
-      job_type: "installation",
-      completed_at: "2024-01-15",
-      price: 350
-    },
-    {
-      id: 2,
-      title: "إصلاح تسربات المياه",
-      description: "إصلاح جميع أنواع تسربات المياه، كشف التسربات بأحدث الأجهزة",
-      images: ["https://via.placeholder.com/300x200?text=Plumbing"],
-      job_type: "maintenance",
-      completed_at: "2024-01-10",
-      price: 200
-    }
-  ]);
+  const dispatch = useDispatch();
+  const { services, isLoading } = useSelector((state) => state.worker);
+  const { user } = useSelector((state) => state.auth);
   
   const [showModal, setShowModal] = useState(false);
   const [editService, setEditService] = useState(null);
@@ -31,20 +17,27 @@ export default function WorkerServices() {
     title: '',
     description: '',
     images: [],
-    job_type: 'installation',
-    completed_at: '',
-    price: ''
+    category: '',
+    price: '',
+    city: '',
   });
   const [previewImages, setPreviewImages] = useState([]);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const jobTypes = [
-    { value: 'installation', label: 'تركيب', icon: '🔧' },
-    { value: 'maintenance', label: 'صيانة', icon: '🛠️' },
-    { value: 'repair', label: 'إصلاح', icon: '🔨' },
+  useEffect(() => {
+    dispatch(getWorkerServices());
+  }, [dispatch]);
+
+  const categories = [
+    { value: 'electrical', label: 'كهرباء', icon: '⚡' },
+    { value: 'plumbing', label: 'سباكة', icon: '💧' },
+    { value: 'carpentry', label: 'نجارة', icon: '🔨' },
     { value: 'cleaning', label: 'تنظيف', icon: '🧹' },
+    { value: 'cooking', label: 'طبخ', icon: '🍳' },
     { value: 'design', label: 'تصميم', icon: '🎨' },
-    { value: 'consulting', label: 'استشارة', icon: '💡' },
+    { value: 'teaching', label: 'تعليم', icon: '📚' },
+    { value: 'transport', label: 'نقل', icon: '🚚' },
   ];
 
   const openAddModal = () => {
@@ -53,9 +46,9 @@ export default function WorkerServices() {
       title: '',
       description: '',
       images: [],
-      job_type: 'installation',
-      completed_at: new Date().toISOString().split('T')[0],
-      price: ''
+      category: '',
+      price: '',
+      city: user?.city || '',
     });
     setPreviewImages([]);
     setErrors({});
@@ -68,9 +61,9 @@ export default function WorkerServices() {
       title: service.title,
       description: service.description,
       images: service.images || [],
-      job_type: service.job_type,
-      completed_at: service.completed_at,
-      price: service.price || ''
+      category: service.category,
+      price: service.price,
+      city: service.city,
     });
     setPreviewImages(service.images || []);
     setErrors({});
@@ -107,48 +100,52 @@ export default function WorkerServices() {
     const e = {};
     if (!formData.title.trim()) e.title = 'عنوان الخدمة مطلوب';
     if (!formData.description.trim()) e.description = 'وصف الخدمة مطلوب';
-    if (!formData.job_type) e.job_type = 'نوع الخدمة مطلوب';
-    if (!formData.completed_at) e.completed_at = 'تاريخ الإنجاز مطلوب';
+    if (!formData.category) e.category = 'نوع الخدمة مطلوب';
     if (!formData.price) e.price = 'السعر مطلوب';
     else if (isNaN(formData.price) || formData.price <= 0) e.price = 'السعر غير صحيح';
+    if (!formData.city.trim()) e.city = 'المدينة مطلوبة';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
 
-    const serviceData = {
-      id: editService?.id || Date.now(),
-      title: formData.title,
-      description: formData.description,
-      images: formData.images,
-      job_type: formData.job_type,
-      completed_at: formData.completed_at,
-      price: formData.price
-    };
-
-    if (editService) {
-      setServices(prev => prev.map(s => s.id === editService.id ? serviceData : s));
-      toast.success(`✅ تم تحديث الخدمة "${serviceData.title}"`);
-    } else {
-      setServices(prev => [serviceData, ...prev]);
-      toast.success(`✅ تم إضافة الخدمة "${serviceData.title}" بنجاح`);
-    }
-    setShowModal(false);
-  };
-
-  const handleDelete = (id, title) => {
-    if (window.confirm(`هل أنت متأكد من حذف الخدمة "${title}"؟`)) {
-      setServices(prev => prev.filter(s => s.id !== id));
-      toast.error(`🗑 تم حذف الخدمة "${title}"`);
+    setSubmitting(true);
+    try {
+      if (editService) {
+        await dispatch(updateService({ id: editService.id, data: formData })).unwrap();
+        toast.success(`✅ تم تحديث الخدمة "${formData.title}"`);
+      } else {
+        await dispatch(createService(formData)).unwrap();
+        toast.success(`✅ تم إضافة الخدمة "${formData.title}" بنجاح`);
+      }
+      setShowModal(false);
+      dispatch(getWorkerServices());
+    } catch (error) {
+      toast.error(error.message || 'حدث خطأ');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const getJobTypeLabel = (type) => {
-    const job = jobTypes.find(j => j.value === type);
-    return job ? `${job.icon} ${job.label}` : type;
+  const handleDelete = async (id, title) => {
+    if (!window.confirm(`هل أنت متأكد من حذف الخدمة "${title}"؟`)) return;
+    try {
+      await dispatch(deleteService(id)).unwrap();
+      toast.success(`🗑 تم حذف الخدمة "${title}"`);
+      dispatch(getWorkerServices());
+    } catch (error) {
+      toast.error('حدث خطأ');
+    }
   };
+
+  const getCategoryLabel = (category) => {
+    const cat = categories.find(c => c.value === category);
+    return cat ? `${cat.icon} ${cat.label}` : category;
+  };
+
+  if (isLoading) return <LoadingSpinner />;
 
   return (
     <WorkerLayout title="خدماتي">
@@ -191,7 +188,7 @@ export default function WorkerServices() {
               <div className="service-card__content">
                 <div className="service-card__header">
                   <h3 className="service-card__title">{service.title}</h3>
-                  <span className="service-card__type">{getJobTypeLabel(service.job_type)}</span>
+                  <span className="service-card__type">{getCategoryLabel(service.category)}</span>
                 </div>
                 
                 <p className="service-card__description">{service.description}</p>
@@ -202,8 +199,12 @@ export default function WorkerServices() {
                     <span>{service.price} درهم/ساعة</span>
                   </div>
                   <div className="service-card__meta-item">
+                    <span>📍</span>
+                    <span>{service.city}</span>
+                  </div>
+                  <div className="service-card__meta-item">
                     <span>📅</span>
-                    <span>{service.completed_at}</span>
+                    <span>{service.created_at?.split('T')[0]}</span>
                   </div>
                 </div>
                 
@@ -258,15 +259,16 @@ export default function WorkerServices() {
                 <div className="form-group">
                   <label className="form-label">نوع الخدمة *</label>
                   <select
-                    className={`form-input ${errors.job_type ? 'err' : ''}`}
-                    value={formData.job_type}
-                    onChange={(e) => setFormData({ ...formData, job_type: e.target.value })}
+                    className={`form-input ${errors.category ? 'err' : ''}`}
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   >
-                    {jobTypes.map(job => (
-                      <option key={job.value} value={job.value}>{job.icon} {job.label}</option>
+                    <option value="">اختر نوع الخدمة</option>
+                    {categories.map(cat => (
+                      <option key={cat.value} value={cat.value}>{cat.icon} {cat.label}</option>
                     ))}
                   </select>
-                  {errors.job_type && <span className="form-err">{errors.job_type}</span>}
+                  {errors.category && <span className="form-err">{errors.category}</span>}
                 </div>
 
                 <div className="form-group">
@@ -283,14 +285,15 @@ export default function WorkerServices() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">تاريخ الإنجاز *</label>
+                <label className="form-label">المدينة *</label>
                 <input
-                  type="date"
-                  className={`form-input ${errors.completed_at ? 'err' : ''}`}
-                  value={formData.completed_at}
-                  onChange={(e) => setFormData({ ...formData, completed_at: e.target.value })}
+                  type="text"
+                  className={`form-input ${errors.city ? 'err' : ''}`}
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="الدار البيضاء"
                 />
-                {errors.completed_at && <span className="form-err">{errors.completed_at}</span>}
+                {errors.city && <span className="form-err">{errors.city}</span>}
               </div>
 
               <div className="form-group">
@@ -333,8 +336,8 @@ export default function WorkerServices() {
                 <button type="button" className="btn btn--ghost" onClick={() => setShowModal(false)}>
                   إلغاء
                 </button>
-                <button type="submit" className="btn btn--navy">
-                  {editService ? '💾 حفظ التغييرات' : '➕ إضافة الخدمة'}
+                <button type="submit" className="btn btn--navy" disabled={submitting}>
+                  {submitting ? 'جاري الحفظ...' : (editService ? '💾 حفظ التغييرات' : '➕ إضافة الخدمة')}
                 </button>
               </div>
             </form>

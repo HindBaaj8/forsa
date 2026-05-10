@@ -1,4 +1,4 @@
-// App.jsx - Version complète avec Client, Worker et Admin
+// App.jsx - Version finale complète
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
@@ -12,9 +12,14 @@ import './styles/Home.css';
 import './styles/Navbar.css';
 import './styles/Admin.css';
 
+// Contexts
+import { AuthProvider } from './contexts/AuthContext';
+import { ChatProvider } from './contexts/ChatContext';
+
 // Pages publiques
 import Home from './pages/Home';
 import Auth from './pages/Auth';
+import NotificationsPage from './pages/NotificationsPage';
 
 // ==================== PAGES CLIENT ====================
 import ClientDashboard from './pages/client/ClientDashboard';
@@ -36,22 +41,32 @@ import WorkerProfile from './pages/worker/WorkerProfile';
 import WorkerSettings from './pages/worker/WorkerSettings';
 import WorkerMessages from './pages/worker/WorkerMessages';
 
-import NotificationsPage from './pages/NotificationsPage';
-
-
 // ==================== PAGES ADMIN ====================
 import AdminApp from './pages/admin/AdminApp';
 
 // Composant Protected Route
 function Protected({ children, allowedRoles = [] }) {
   const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  let user = {};
+  
+  try {
+    user = JSON.parse(localStorage.getItem('user') || '{}');
+  } catch (e) {
+    user = {};
+  }
   
   if (!token) {
     return <Navigate to="/auth?mode=login" replace />;
   }
   
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    if (user.role === 'client') {
+      return <Navigate to="/client" replace />;
+    } else if (user.role === 'worker') {
+      return <Navigate to="/worker" replace />;
+    } else if (user.role === 'admin') {
+      return <Navigate to="/admin" replace />;
+    }
     return <Navigate to="/" replace />;
   }
   
@@ -61,29 +76,10 @@ function Protected({ children, allowedRoles = [] }) {
 // Composant 404
 function NotFound() {
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: 'Cairo, sans-serif',
-      direction: 'rtl',
-      flexDirection: 'column',
-      gap: 16
-    }}>
-      <div style={{ fontSize: 72, fontWeight: 900, color: '#1e3a6e' }}>٤٠٤</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: '#334155' }}>الصفحة غير موجودة</div>
-      <a href="/" style={{
-        padding: '10px 24px',
-        background: '#1e3a6e',
-        color: '#fff',
-        borderRadius: 12,
-        fontWeight: 700,
-        fontSize: 14,
-        textDecoration: 'none'
-      }}>
-        العودة للرئيسية
-      </a>
+    <div className="not-found">
+      <div className="not-found__code">٤٠٤</div>
+      <div className="not-found__text">الصفحة غير موجودة</div>
+      <a href="/" className="not-found__btn">العودة للرئيسية</a>
     </div>
   );
 }
@@ -92,124 +88,131 @@ export default function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <Toaster 
-          position="top-center" 
-          reverseOrder={false}
-          toastOptions={{
-            duration: 4000,
-            style: {
-              fontFamily: 'Cairo, sans-serif',
-              fontSize: '14px',
-            },
-          }}
-        />
-        <Routes>
-          {/* ==================== ROUTES PUBLIQUES ==================== */}
-          <Route path="/" element={<Home />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/login" element={<Navigate to="/auth?mode=login" replace />} />
-          <Route path="/register" element={<Navigate to="/auth?mode=register" replace />} />
-          <Route path="/forgot-password" element={<Navigate to="/auth?mode=forgot" replace />} />
+        <AuthProvider>
+          <ChatProvider>
+            <Toaster 
+              position="top-center" 
+              reverseOrder={false}
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  fontFamily: 'Cairo, sans-serif',
+                  fontSize: '14px',
+                  borderRadius: '12px',
+                },
+              }}
+            />
+            <Routes>
+              {/* ==================== ROUTES PUBLIQUES ==================== */}
+              <Route path="/" element={<Home />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/login" element={<Navigate to="/auth?mode=login" replace />} />
+              <Route path="/register" element={<Navigate to="/auth?mode=register" replace />} />
+              <Route path="/forgot-password" element={<Navigate to="/auth?mode=forgot" replace />} />
 
-          {/* ==================== ROUTES CLIENT ==================== */}
-          <Route path="/client" element={
-            <Protected allowedRoles={['client']}>
-              <ClientDashboard />
-            </Protected>
-          } />
-          <Route path="/client/search" element={
-            <Protected allowedRoles={['client']}>
-              <ClientSearch />
-            </Protected>
-          } />
-          <Route path="/client/requests" element={
-            <Protected allowedRoles={['client']}>
-              <ClientRequests />
-            </Protected>
-          } />
-          <Route path="/client/messages" element={
-            <Protected allowedRoles={['client']}>
-              <ClientMessages />
-            </Protected>
-          } />
-          <Route path="/client/favorites" element={
-            <Protected allowedRoles={['client']}>
-              <ClientFavorites />
-            </Protected>
-          } />
-          <Route path="/client/settings" element={
-            <Protected allowedRoles={['client']}>
-              <ClientSettings />
-            </Protected>
-          } />
-          <Route path="/client/change-password" element={
-            <Protected allowedRoles={['client']}>
-              <ChangePassword />
-            </Protected>
-          } />
-          <Route path="/client/payment-methods" element={
-            <Protected allowedRoles={['client']}>
-              <PaymentMethods />
-            </Protected>
-          } />
+              {/* ==================== ROUTES CLIENT ==================== */}
+              <Route path="/client" element={
+                <Protected allowedRoles={['client']}>
+                  <ClientDashboard />
+                </Protected>
+              } />
+              <Route path="/client/search" element={
+                <Protected allowedRoles={['client']}>
+                  <ClientSearch />
+                </Protected>
+              } />
+              <Route path="/client/requests" element={
+                <Protected allowedRoles={['client']}>
+                  <ClientRequests />
+                </Protected>
+              } />
+              <Route path="/client/messages" element={
+                <Protected allowedRoles={['client']}>
+                  <ClientMessages />
+                </Protected>
+              } />
+              <Route path="/client/favorites" element={
+                <Protected allowedRoles={['client']}>
+                  <ClientFavorites />
+                </Protected>
+              } />
+              <Route path="/client/settings" element={
+                <Protected allowedRoles={['client']}>
+                  <ClientSettings />
+                </Protected>
+              } />
+              <Route path="/client/change-password" element={
+                <Protected allowedRoles={['client']}>
+                  <ChangePassword />
+                </Protected>
+              } />
+              <Route path="/client/payment-methods" element={
+                <Protected allowedRoles={['client']}>
+                  <PaymentMethods />
+                </Protected>
+              } />
 
-          {/* ==================== ROUTES WORKER ==================== */}
-          <Route path="/worker" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerDashboard />
-            </Protected>
-          } />
-          <Route path="/worker/orders" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerOrders />
-            </Protected>
-          } />
-          <Route path="/worker/services" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerServices />
-            </Protected>
-          } />
-          <Route path="/worker/messages" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerMessages />
-            </Protected>
-          } />
-          <Route path="/worker/schedule" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerSchedule />
-            </Protected>
-          } />
-          <Route path="/worker/earnings" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerEarnings />
-            </Protected>
-          } />
-          <Route path="/worker/profile" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerProfile />
-            </Protected>
-          } />
-          <Route path="/worker/settings" element={
-            <Protected allowedRoles={['worker']}>
-              <WorkerSettings />
-            </Protected>
-          } />
+              {/* ==================== ROUTES WORKER ==================== */}
+              <Route path="/worker" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerDashboard />
+                </Protected>
+              } />
+              <Route path="/worker/orders" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerOrders />
+                </Protected>
+              } />
+              <Route path="/worker/services" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerServices />
+                </Protected>
+              } />
+              <Route path="/worker/messages" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerMessages />
+                </Protected>
+              } />
+              <Route path="/worker/schedule" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerSchedule />
+                </Protected>
+              } />
+              <Route path="/worker/earnings" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerEarnings />
+                </Protected>
+              } />
+              <Route path="/worker/profile" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerProfile />
+                </Protected>
+              } />
+              <Route path="/worker/settings" element={
+                <Protected allowedRoles={['worker']}>
+                  <WorkerSettings />
+                </Protected>
+              } />
 
-          {/* ==================== ROUTES ADMIN ==================== */}
-          <Route path="/admin/*" element={
-            <Protected allowedRoles={['admin']}>
-              <AdminApp />
-            </Protected>
-          } />
-          <Route path="/notifications" element={
-  <Protected allowedRoles={['client', 'worker']}>
-    <NotificationsPage />
-  </Protected>
-} />
+              {/* ==================== ROUTES ADMIN ==================== */}
+              <Route path="/admin/*" element={
+                <Protected allowedRoles={['admin']}>
+                  <AdminApp />
+                </Protected>
+              } />
+              
+              {/* ==================== ROUTES COMMUNES ==================== */}
+              <Route path="/notifications" element={
+                <Protected allowedRoles={['client', 'worker']}>
+                  <NotificationsPage />
+                </Protected>
+              } />
 
-          {/* ==================== 404 ==================== */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+              {/* ==================== 404 ==================== */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ChatProvider>
+        </AuthProvider>
       </BrowserRouter>
     </Provider>
   );

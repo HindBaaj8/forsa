@@ -7,12 +7,14 @@ import { logout } from '../../features/auth/authSlice';
 import ClientLayout from '../../components/layout/ClientLayout';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 
 export default function ClientSettings() {
   const dispatch  = useDispatch();
   const navigate  = useNavigate();
   const { user }  = useSelector((state) => state.auth);
   const { notifications, isLoading } = useSelector((state) => state.client);
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -50,11 +52,19 @@ export default function ClientSettings() {
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      await dispatch(updateProfile(formData)).unwrap();
+      const result = await dispatch(updateProfile(formData)).unwrap();
       toast.success('تم تحديث المعلومات الشخصية بنجاح');
+      // تحديث الـ user في localStorage
+      if (result.user) {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({ ...storedUser, ...result.user }));
+      }
     } catch (err) {
       toast.error(err.message || 'حدث خطأ');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,10 +79,19 @@ export default function ClientSettings() {
     }
   };
 
-  const handleDeleteAccount = () => {
-    dispatch(logout());
-    toast.success('تم حذف الحساب');
-    navigate('/auth?mode=login');
+  const handleDeleteAccount = async () => {
+    setLoading(true);
+    try {
+      // استدعاء API حذف الحساب (إذا كان متوفراً)
+      await api.delete('/user/account');
+      toast.success('تم حذف الحساب بنجاح');
+    } catch (err) {
+      console.error('Delete account error:', err);
+    } finally {
+      dispatch(logout());
+      navigate('/auth?mode=login');
+      setLoading(false);
+    }
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -81,7 +100,7 @@ export default function ClientSettings() {
     <ClientLayout title="الإعدادات">
       <div className="settings-grid">
 
-        {/* ══ Profile Form ══ */}
+        {/* Profile Form */}
         <div className="card">
           <div className="card-title">المعلومات الشخصية</div>
 
@@ -157,16 +176,18 @@ export default function ClientSettings() {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="example@email.com"
+                  disabled
                 />
+                <span className="form-hint">البريد الإلكتروني لا يمكن تغييره</span>
               </div>
             </div>
-            <button className="btn btn--navy" type="submit">
-              حفظ التغييرات
+            <button className="btn btn--navy" type="submit" disabled={loading}>
+              {loading ? 'جاري الحفظ...' : 'حفظ التغييرات'}
             </button>
           </form>
         </div>
 
-        {/* ══ Right Column ══ */}
+        {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Notifications */}
@@ -208,7 +229,7 @@ export default function ClientSettings() {
               <span style={{ color: 'var(--text3)', fontSize: 18 }}>←</span>
             </Link>
 
-            {/* طرق الدفع - الآن Link */}
+            {/* طرق الدفع */}
             <Link
               to="/client/payment-methods"
               style={{
@@ -246,7 +267,7 @@ export default function ClientSettings() {
         </div>
       </div>
 
-      {/* ══ Delete Confirm Modal ══ */}
+      {/* Delete Confirm Modal */}
       {showDeleteModal && (
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -265,8 +286,9 @@ export default function ClientSettings() {
                 className="btn"
                 style={{ background: 'var(--error)', color: '#fff' }}
                 onClick={handleDeleteAccount}
+                disabled={loading}
               >
-                نعم، احذف حسابي
+                {loading ? 'جاري الحذف...' : 'نعم، احذف حسابي'}
               </button>
             </div>
           </div>

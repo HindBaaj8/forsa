@@ -1,4 +1,4 @@
-// components/layout/Sidebar.jsx - بدون إشعارات في القائمة
+// components/layout/Sidebar.jsx
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../features/auth/authSlice';
@@ -9,13 +9,12 @@ export default function Sidebar() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { conversations } = useSelector((state) => state.messages);
-  const { requests } = useSelector((state) => state.requests);
-
+  const requests = useSelector((state) => state.client?.requests || []);
   const unreadMessages = conversations?.reduce((sum, c) => sum + (c.unread_count || 0), 0) || 0;
   const pendingRequests = requests?.filter(r => r.status === 'pending').length || 0;
 
-  // القائمة بدون "الإشعارات"
-  const NAV = [
+  // روابط العميل (Client)
+  const clientNav = [
     { icon: '🏠', label: 'الرئيسية', to: '/client' },
     { icon: '🔍', label: 'البحث عن خدمة', to: '/client/search' },
     { icon: '📋', label: 'طلباتي', to: '/client/requests', badge: pendingRequests },
@@ -23,6 +22,20 @@ export default function Sidebar() {
     { icon: '❤️', label: 'المفضلة', to: '/client/favorites' },
     { icon: '⚙️', label: 'الإعدادات', to: '/client/settings' },
   ];
+
+  // روابط العامل (Worker)
+  const workerNav = [
+    { icon: '🏠', label: 'الرئيسية', to: '/worker' },
+    { icon: '🛠️', label: 'خدماتي', to: '/worker/services' },
+    { icon: '📦', label: 'الطلبات', to: '/worker/orders', badge: pendingRequests, badgeRed: true },
+    { icon: '💬', label: 'الرسائل', to: '/worker/messages', badge: unreadMessages, badgeRed: true },
+    { icon: '📅', label: 'جدول المواعيد', to: '/worker/schedule' },
+    { icon: '💰', label: 'الأرباح', to: '/worker/earnings' },
+    { icon: '👤', label: 'الملف الشخصي', to: '/worker/profile' },
+    { icon: '⚙️', label: 'الإعدادات', to: '/worker/settings' },
+  ];
+
+  const NAV = user?.role === 'client' ? clientNav : workerNav;
 
   const handleLogout = () => {
     dispatch(logout());
