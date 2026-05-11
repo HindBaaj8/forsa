@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Request;
 use App\Models\Service;
+use App\Events\DataUpdated;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\Validator;
 
@@ -66,6 +67,14 @@ class RequestController extends Controller
             'status' => 'pending',
         ]);
         
+        // ✅ إشعار للعميل (صاحب الطلب)
+        broadcast(new DataUpdated(
+            $request->user()->id,
+            'request_created',
+            'تم إنشاء طلب جديد بنجاح',
+            $newRequest
+        ));
+        
         return response()->json([
             'status' => 'success',
             'message' => 'Request created successfully',
@@ -97,8 +106,28 @@ class RequestController extends Controller
             ], 403);
         }
         
+        $oldStatus = $req->status;
         $req->status = $request->status;
         $req->save();
+        
+        // ✅ إشعار لكل من العميل والعامل
+        // إشعار للعميل
+        broadcast(new DataUpdated(
+            $req->client_id,
+            'request_updated',
+            'تم تحديث حالة الطلب رقم ' . $req->id . ' إلى ' . $request->status,
+            $req
+        ));
+        
+        // إشعار للعامل إذا موجود
+        if ($req->worker_id) {
+            broadcast(new DataUpdated(
+                $req->worker_id,
+                'request_updated',
+                'تم تحديث حالة الطلب رقم ' . $req->id,
+                $req
+            ));
+        }
         
         return response()->json([
             'status' => 'success',
@@ -137,6 +166,22 @@ class RequestController extends Controller
         $req->status = 'active';
         $req->save();
         
+        // ✅ إشعار للعامل المعين
+        broadcast(new DataUpdated(
+            $request->worker_id,
+            'order_created',
+            'تم تعيينك للطلب رقم ' . $req->id,
+            $req
+        ));
+        
+        // ✅ إشعار للعميل
+        broadcast(new DataUpdated(
+            $request->user()->id,
+            'request_updated',
+            'تم تعيين عامل للطلب رقم ' . $req->id,
+            $req
+        ));
+        
         return response()->json([
             'status' => 'success',
             'message' => 'Worker assigned successfully',
@@ -164,6 +209,14 @@ class RequestController extends Controller
         }
         
         $req->delete();
+        
+        // ✅ إشعار للعميل بحذف الطلب
+        broadcast(new DataUpdated(
+            $request->user()->id,
+            'request_cancelled',
+            'تم حذف الطلب رقم ' . $id,
+            ['id' => $id]
+        ));
         
         return response()->json([
             'status' => 'success',

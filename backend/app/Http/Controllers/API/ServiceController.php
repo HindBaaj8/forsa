@@ -15,31 +15,34 @@ class ServiceController extends Controller
     {
         $query = Service::with('worker')->where('status', 'active');
         
-        // Filter by category
         if ($request->has('category')) {
             $query->where('category', $request->category);
         }
         
-        // Filter by city
         if ($request->has('city')) {
             $query->where('city', $request->city);
         }
         
-        // Search by title
         if ($request->has('search')) {
             $query->where('title', 'like', '%' . $request->search . '%');
         }
         
         $services = $query->latest()->paginate(20);
         
-        return response()->json($services);
+        return response()->json([
+            'status' => 'success',
+            'data' => $services
+        ]);
     }
     
     // Get single service
     public function show($id)
     {
         $service = Service::with('worker')->findOrFail($id);
-        return response()->json($service);
+        return response()->json([
+            'status' => 'success',
+            'data' => $service
+        ]);
     }
     
     // Create new service (worker only)
@@ -69,9 +72,11 @@ class ServiceController extends Controller
             'status' => 'active',
         ]);
         
+        // ✅ نفس البنية المستخدمة في myServices
         return response()->json([
-            'service' => $service,
-            'message' => 'Service created successfully'
+            'status' => 'success',
+            'message' => 'Service created successfully',
+            'data' => $service  // ✅ استخدم 'data' بدل 'service'
         ], 201);
     }
     
@@ -80,7 +85,6 @@ class ServiceController extends Controller
     {
         $service = Service::findOrFail($id);
         
-        // Check if worker owns this service
         if ($service->worker_id !== $request->user()->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
@@ -108,8 +112,9 @@ class ServiceController extends Controller
         }
         
         return response()->json([
-            'service' => $service,
-            'message' => 'Service updated successfully'
+            'status' => 'success',
+            'message' => 'Service updated successfully',
+            'data' => $service  // ✅ استخدم 'data'
         ]);
     }
     
@@ -124,7 +129,23 @@ class ServiceController extends Controller
         
         $service->delete();
         
-        return response()->json(['message' => 'Service deleted successfully']);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Service deleted successfully'
+        ]);
+    }
+    
+    // ✅ Get worker services (for worker dashboard) - المصحح
+    public function myServices(Request $request)
+    {
+        $services = Service::where('worker_id', $request->user()->id)
+            ->latest()
+            ->get();  // ✅ استخدم get() بدل paginate() للبساطة
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => $services  // ✅ نفس البنية
+        ]);
     }
     
     // Search workers (for clients)
@@ -134,8 +155,7 @@ class ServiceController extends Controller
             ->where('status', 'active')
             ->with('services');
         
-        // Search by keyword
-        if ($request->has('query')) {
+        if ($request->has('query') && !empty($request->query)) {
             $query->where(function($q) use ($request) {
                 $q->where('first_name', 'like', '%' . $request->query . '%')
                   ->orWhere('last_name', 'like', '%' . $request->query . '%')
@@ -145,21 +165,22 @@ class ServiceController extends Controller
             });
         }
         
-        // Filter by category
-        if ($request->has('category')) {
+        if ($request->has('category') && !empty($request->category)) {
             $query->whereHas('services', function($q) use ($request) {
                 $q->where('category', $request->category);
             });
         }
         
-        // Filter by city
-        if ($request->has('city')) {
+        if ($request->has('city') && !empty($request->city)) {
             $query->where('city', $request->city);
         }
         
         $workers = $query->paginate(20);
         
-        return response()->json($workers);
+        return response()->json([
+            'status' => 'success',
+            'workers' => $workers
+        ]);
     }
     
     // Get filters (categories and cities)
@@ -175,18 +196,9 @@ class ServiceController extends Controller
             ->pluck('city');
         
         return response()->json([
+            'status' => 'success',
             'categories' => $categories,
-            'cities' => $cities,
+            'cities' => $cities
         ]);
-    }
-    
-    // Get worker services (for worker dashboard)
-    public function myServices(Request $request)
-    {
-        $services = Service::where('worker_id', $request->user()->id)
-            ->latest()
-            ->paginate(20);
-        
-        return response()->json($services);
     }
 }
