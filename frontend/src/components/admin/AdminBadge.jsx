@@ -1,6 +1,37 @@
-// src/components/admin/AdminBadge.jsx
+import React from 'react';
+
 export default function AdminBadge({ type, label }) {
-  const map = { active:"active", pending:"pending", blocked:"blocked", progress:"progress", done:"done", worker:"worker", client:"client", admin:"admin" };
-  const txt = { active:"● نشط", pending:"● معلق", blocked:"● محظور", progress:"● جاري", done:"● مكتمل" };
-  return <span className={`badge badge-${map[type]||type}`}>{txt[type] || label}</span>;
+  const types = {
+    active: 'badge--active',
+    pending: 'badge--pending',
+    blocked: 'badge--blocked',
+    completed: 'badge--completed',
+    cancelled: 'badge--cancel',
+    client: 'badge--client',
+    worker: 'badge--worker',
+    admin: 'badge--admin',
+    success: 'badge--success',
+    error: 'badge--error',
+    warning: 'badge--warning',
+  };
+
+  const labels = {
+    active: 'نشط',
+    pending: 'معلق',
+    blocked: 'محظور',
+    completed: 'مكتمل',
+    cancelled: 'ملغي',
+    client: 'عميل',
+    worker: 'عامل',
+    admin: 'مشرف',
+    success: 'نجاح',
+    error: 'خطأ',
+    warning: 'تنبيه',
+  };
+
+  return (
+    <span className={`badge ${types[type]}`}>
+      {label || labels[type] || type}
+    </span>
+  );
 }

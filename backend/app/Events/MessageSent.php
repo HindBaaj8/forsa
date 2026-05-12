@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -16,28 +15,21 @@ class MessageSent implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $message;
-    public $conversation;
 
-    public function __construct(Message $message, Conversation $conversation)
+    public function __construct(Message $message)
     {
-        $this->message = $message;
-        $this->conversation = $conversation;
+        $this->message = $message->load('sender');
     }
 
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel("conversation.{$this->conversation->id}")
+            new PrivateChannel('conversation.' . $this->message->conversation_id),
         ];
     }
 
-    public function broadcastWith(): array
+    public function broadcastAs()
     {
-        return [
-            'id' => $this->message->id,
-            'message' => $this->message->message,
-            'sender_id' => $this->message->sender_id,
-            'created_at' => $this->message->created_at->toISOString(),
-        ];
+        return 'message.sent';
     }
 }

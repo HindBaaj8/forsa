@@ -1,57 +1,61 @@
-// src/components/admin/AdminSidebar.jsx
-export default function AdminSidebar({ page, setPage, usersCount, pendingRequestsCount, pendingWorkersCount }) {
-  const navItems = [
-    { section:"الرئيسية", items:[
-      { key:"dashboard", icon:"📊", label:"لوحة التحكم" },
-      { key:"users", icon:"👥", label:"المستخدمون", badge:usersCount },
-    ]},
-    { section:"الإدارة", items:[
-      { key:"requests", icon:"📋", label:"الطلبات", badge:pendingRequestsCount, badgeClass:"sb-badge-gold" },
-      { key:"workers", icon:"🔧", label:"العمال", badge:pendingWorkersCount, badgeClass:"sb-badge-gold" },
-      { key:"categories", icon:"🏷️", label:"الفئات" },
-    ]},
-    { section:"المالية", items:[
-      { key:"finance", icon:"💰", label:"المالية" },
-    ]},
-    { section:"الإعدادات", items:[
-      { key:"settings", icon:"⚙️", label:"الإعدادات" },
-      { key:"alerts", icon:"🔔", label:"الإشعارات", badge:3, badgeClass:"sb-badge-red" },
-    ]},
-  ];
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { 
+  LayoutDashboard, 
+  Users, 
+  ClipboardList, 
+  Briefcase, 
+  Tags, 
+  DollarSign, 
+  Bell, 
+  Settings, 
+  LogOut 
+} from 'lucide-react';
+import { logout } from '../../features/auth/authSlice';
+
+const menuItems = [
+  { path: '/admin', icon: LayoutDashboard, label: 'لوحة التحكم' },
+  { path: '/admin/users', icon: Users, label: 'المستخدمين' },
+  { path: '/admin/requests', icon: ClipboardList, label: 'الطلبات' },
+  { path: '/admin/workers', icon: Briefcase, label: 'العمال' },
+  { path: '/admin/categories', icon: Tags, label: 'الفئات' },
+  { path: '/admin/finance', icon: DollarSign, label: 'المالية' },
+  { path: '/admin/alerts', icon: Bell, label: 'الإشعارات' },
+  { path: '/admin/settings', icon: Settings, label: 'الإعدادات' },
+];
+
+export default function AdminSidebar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/');
+  };
 
   return (
-    <div className="admin-sidebar">  {/* ← CHANGÉ: sidebar → admin-sidebar */}
-      <div className="sb-brand">
-        <div className="sb-brand-icon">🛡</div>
-        <div>
-          <div className="sb-brand-name">خدمة</div>
-          <div className="sb-brand-sub">لوحة الإدارة</div>
-        </div>
-      </div>
-
-      <div className="sb-nav">
-        {navItems.map(group => (
-          <div key={group.section}>
-            <div className="sb-section-label">{group.section}</div>
-            {group.items.map(item => (
-              <button key={item.key} className={`sb-item${page===item.key?" active":""}`} onClick={()=>setPage(item.key)}>
-                <span className="sb-icon">{item.icon}</span>
-                {item.label}
-                {item.badge > 0 && <span className={`sb-badge ${item.badgeClass||""}`}>{item.badge}</span>}
-              </button>
-            ))}
-            <div className="sb-divider" />
-          </div>
-        ))}
-      </div>
-
-      <div className="sb-user">
-        <div className="sb-user-av">أح</div>
-        <div>
-          <div className="sb-user-name">أحمد المدير</div>
-          <div className="sb-user-role">Super Admin</div>
-        </div>
-      </div>
+    <div className="sb-nav">
+      <div className="sb-section-label">الرئيسية</div>
+      {menuItems.map(item => {
+        const Icon = item.icon;
+        return (
+          <button
+            key={item.path}
+            className={`sb-item ${location.pathname === item.path ? 'active' : ''}`}
+            onClick={() => navigate(item.path)}
+          >
+            <Icon size={18} className="sb-icon" />
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
+      <div className="sb-divider" />
+      <button className="sb-item" onClick={handleLogout}>
+        <LogOut size={18} className="sb-icon" />
+        <span>تسجيل الخروج</span>
+      </button>
     </div>
   );
 }

@@ -1,13 +1,12 @@
-// features/requests/requestsSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// Get user requests
-export const getUserRequests = createAsyncThunk(
+// Async Thunks
+export const getRequests = createAsyncThunk(
   'requests/getAll',
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await api.get('/client/requests');
+      const response = await api.get('/requests', { params });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
@@ -15,7 +14,18 @@ export const getUserRequests = createAsyncThunk(
   }
 );
 
-// Create new request
+export const getRequest = createAsyncThunk(
+  'requests/getOne',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/requests/${id}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
 export const createRequest = createAsyncThunk(
   'requests/create',
   async (requestData, { rejectWithValue }) => {
@@ -28,50 +38,106 @@ export const createRequest = createAsyncThunk(
   }
 );
 
-// Cancel request
-export const cancelRequest = createAsyncThunk(
-  'requests/cancel',
-  async (id, { rejectWithValue }) => {
+export const updateRequest = createAsyncThunk(
+  'requests/update',
+  async ({ id, data }, { rejectWithValue }) => {
     try {
-      const response = await api.delete(`/requests/${id}`);
-      return { id, ...response.data };
+      const response = await api.put(`/requests/${id}`, data);
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-const requestsSlice = createSlice({
-  name: 'requests',
-  initialState: {
-    requests: [],
-    isLoading: false,
-    error: null,
+export const cancelRequest = createAsyncThunk(
+  'requests/cancel',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/requests/${id}/cancel`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+export const deleteRequest = createAsyncThunk(
+  'requests/delete',
+  async (id, { rejectWithValue }) => {
+    try {
+      await api.delete(`/requests/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+const initialState = {
+  items: [],
+  currentRequest: null,
+  pagination: {
+    current_page: 1,
+    last_page: 1,
+    per_page: 20,
+    total: 0,
   },
-  reducers: {},
+  isLoading: false,
+  error: null,
+};
+
+const requestSlice = createSlice({
+  name: 'requests',
+  initialState,
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
-      // Get all
-      .addCase(getUserRequests.pending, (state) => {
+      .addCase(getRequests.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
-      .addCase(getUserRequests.fulfilled, (state, action) => {
+      .addCase(getRequests.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.requests = action.payload.requests;
+        state.items = action.payload.data || action.payload;
+        if (action.payload.meta) {
+          state.pagination = action.payload.meta;
+        }
       })
-      .addCase(getUserRequests.rejected, (state, action) => {
+      .addCase(getRequests.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       })
-      // Create
-      .addCase(createRequest.fulfilled, (state, action) => {
-        state.requests.unshift(action.payload.request);
+      .addCase(getRequest.fulfilled, (state, action) => {
+        state.currentRequest = action.payload;
       })
-      // Cancel
+      .addCase(createRequest.fulfilled, (state, action) => {
+        state.items.unshift(action.payload);
+      })
+      .addCase(updateRequest.fulfilled, (state, action) => {
+        const index = state.items.findIndex(i => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+        if (state.currentRequest?.id === action.payload.id) {
+          state.currentRequest = action.payload;
+        }
+      })
       .addCase(cancelRequest.fulfilled, (state, action) => {
-        state.requests = state.requests.filter(r => r.id !== action.payload.id);
+        const index = state.items.findIndex(i => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      })
+      .addCase(deleteRequest.fulfilled, (state, action) => {
+        state.items = state.items.filter(i => i.id !== action.payload);
       });
   },
 });
 
-export default requestsSlice.reducer;
+export const { clearError } = requestSlice.actions;
+export default requestSlice.reducer;

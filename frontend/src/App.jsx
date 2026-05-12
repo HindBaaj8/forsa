@@ -1,219 +1,164 @@
-// App.jsx - Version finale complète
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { Toaster } from 'react-hot-toast';
-import { store } from './app/store';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectIsAuthenticated, selectUserRole } from './features/auth/authSelectors';
 
-// Styles
+// ✅ استدعاء جميع الـ CSS هنا
 import './styles/global.css';
-import './styles/Dashboard.css';
-import './styles/Auth.css';
-import './styles/Home.css';
-import './styles/Navbar.css';
+import './styles/variables.css';
 import './styles/Admin.css';
+import './styles/Client.css';
+import './styles/Worker.css';
+import './styles/Auth.css';
+import './styles/Navbar.css';
 
-// Contexts
-import { AuthProvider } from './contexts/AuthContext';
-import { ChatProvider } from './contexts/ChatContext';
-
-// Pages publiques
+// Pages
 import Home from './pages/Home';
-import Auth from './pages/Auth';
+import Auth from './components/auth/Auth';
 import NotificationsPage from './pages/NotificationsPage';
 
-// ==================== PAGES CLIENT ====================
-import ClientDashboard from './pages/client/ClientDashboard';
-import ClientSearch from './pages/client/ClientSearch';
-import ClientRequests from './pages/client/ClientRequests';
-import ClientMessages from './pages/client/ClientMessages';
-import ClientFavorites from './pages/client/ClientFavorites';
-import ClientSettings from './pages/client/ClientSettings';
-import ChangePassword from './pages/client/ChangePassword';
-import PaymentMethods from './pages/client/PaymentMethods';
+// Admin
+import AdminApp from './pages/AdminApp';
 
-// ==================== PAGES WORKER ====================
-import WorkerDashboard from './pages/worker/WorkerDashboard';
-import WorkerOrders from './pages/worker/WorkerOrders';
-import WorkerServices from './pages/worker/WorkerServices';
-import WorkerSchedule from './pages/worker/WorkerSchedule';
-import WorkerEarnings from './pages/worker/WorkerEarnings';
-import WorkerProfile from './pages/worker/WorkerProfile';
-import WorkerSettings from './pages/worker/WorkerSettings';
-import WorkerMessages from './pages/worker/WorkerMessages';
+// Client
+import ClientDashboard from './components/client/ClientDashboard';
+import ClientRequests from './components/client/ClientRequests';
+import ClientMessages from './components/client/ClientMessages';
+import ClientFavorites from './components/client/ClientFavorites';
+import ClientSettings from './components/client/ClientSettings';
+import ClientSearch from './components/client/ClientSearch';
+import ChangePassword from './components/client/ChangePassword';
+import PaymentMethods from './components/client/PaymentMethods';
 
-// ==================== PAGES ADMIN ====================
-import AdminApp from './pages/admin/AdminApp';
+// Worker
+import WorkerDashboard from './components/worker/WorkerDashboard';
+import WorkerServices from './components/worker/WorkerServices';
+import WorkerOrders from './components/worker/WorkerOrders';
+import WorkerMessages from './components/worker/WorkerMessages';
+import WorkerEarnings from './components/worker/WorkerEarnings';
+import WorkerSchedule from './components/worker/WorkerSchedule';
+import WorkerProfile from './components/worker/WorkerProfile';
+import WorkerSettings from './components/worker/WorkerSettings';
 
-// Composant Protected Route
-function Protected({ children, allowedRoles = [] }) {
-  const token = localStorage.getItem('token');
-  let user = {};
-  
-  try {
-    user = JSON.parse(localStorage.getItem('user') || '{}');
-  } catch (e) {
-    user = {};
-  }
-  
-  if (!token) {
+// Route Guards
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const userRole = useSelector(selectUserRole);
+
+  if (!isAuthenticated) {
     return <Navigate to="/auth?mode=login" replace />;
   }
-  
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    if (user.role === 'client') {
-      return <Navigate to="/client" replace />;
-    } else if (user.role === 'worker') {
-      return <Navigate to="/worker" replace />;
-    } else if (user.role === 'admin') {
-      return <Navigate to="/admin" replace />;
-    }
+
+  if (allowedRoles && !allowedRoles.includes(userRole)) {
     return <Navigate to="/" replace />;
   }
-  
+
   return children;
-}
+};
 
-// Composant 404
-function NotFound() {
+function App() {
   return (
-    <div className="not-found">
-      <div className="not-found__code">٤٠٤</div>
-      <div className="not-found__text">الصفحة غير موجودة</div>
-      <a href="/" className="not-found__btn">العودة للرئيسية</a>
-    </div>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<Home />} />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/notifications" element={<NotificationsPage />} />
+
+      {/* Admin Routes */}
+      <Route path="/admin/*" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminApp />
+        </ProtectedRoute>
+      } />
+
+      {/* Client Routes */}
+      <Route path="/client" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/requests" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientRequests />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/messages" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientMessages />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/favorites" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientFavorites />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/settings" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientSettings />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/search" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientSearch />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/change-password" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ChangePassword />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/payment-methods" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <PaymentMethods />
+        </ProtectedRoute>
+      } />
+
+      {/* Worker Routes */}
+      <Route path="/worker" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/services" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerServices />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/orders" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerOrders />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/messages" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerMessages />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/earnings" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerEarnings />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/schedule" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerSchedule />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/profile" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerProfile />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/settings" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerSettings />
+        </ProtectedRoute>
+      } />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 
-export default function App() {
-  return (
-    <Provider store={store}>
-      <BrowserRouter>
-        <AuthProvider>
-          <ChatProvider>
-            <Toaster 
-              position="top-center" 
-              reverseOrder={false}
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  fontFamily: 'Cairo, sans-serif',
-                  fontSize: '14px',
-                  borderRadius: '12px',
-                },
-              }}
-            />
-            <Routes>
-              {/* ==================== ROUTES PUBLIQUES ==================== */}
-              <Route path="/" element={<Home />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/login" element={<Navigate to="/auth?mode=login" replace />} />
-              <Route path="/register" element={<Navigate to="/auth?mode=register" replace />} />
-              <Route path="/forgot-password" element={<Navigate to="/auth?mode=forgot" replace />} />
-
-              {/* ==================== ROUTES CLIENT ==================== */}
-              <Route path="/client" element={
-                <Protected allowedRoles={['client']}>
-                  <ClientDashboard />
-                </Protected>
-              } />
-              <Route path="/client/search" element={
-                <Protected allowedRoles={['client']}>
-                  <ClientSearch />
-                </Protected>
-              } />
-              <Route path="/client/requests" element={
-                <Protected allowedRoles={['client']}>
-                  <ClientRequests />
-                </Protected>
-              } />
-              <Route path="/client/messages" element={
-                <Protected allowedRoles={['client']}>
-                  <ClientMessages />
-                </Protected>
-              } />
-              <Route path="/client/favorites" element={
-                <Protected allowedRoles={['client']}>
-                  <ClientFavorites />
-                </Protected>
-              } />
-              <Route path="/client/settings" element={
-                <Protected allowedRoles={['client']}>
-                  <ClientSettings />
-                </Protected>
-              } />
-              <Route path="/client/change-password" element={
-                <Protected allowedRoles={['client']}>
-                  <ChangePassword />
-                </Protected>
-              } />
-              <Route path="/client/payment-methods" element={
-                <Protected allowedRoles={['client']}>
-                  <PaymentMethods />
-                </Protected>
-              } />
-
-              {/* ==================== ROUTES WORKER ==================== */}
-              <Route path="/worker" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerDashboard />
-                </Protected>
-              } />
-              <Route path="/worker/orders" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerOrders />
-                </Protected>
-              } />
-              <Route path="/worker/services" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerServices />
-                </Protected>
-              } />
-              <Route path="/worker/messages" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerMessages />
-                </Protected>
-              } />
-              <Route path="/worker/schedule" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerSchedule />
-                </Protected>
-              } />
-              <Route path="/worker/earnings" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerEarnings />
-                </Protected>
-              } />
-              <Route path="/worker/profile" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerProfile />
-                </Protected>
-              } />
-              <Route path="/worker/settings" element={
-                <Protected allowedRoles={['worker']}>
-                  <WorkerSettings />
-                </Protected>
-              } />
-
-              {/* ==================== ROUTES ADMIN ==================== */}
-              <Route path="/admin/*" element={
-                <Protected allowedRoles={['admin']}>
-                  <AdminApp />
-                </Protected>
-              } />
-              
-              {/* ==================== ROUTES COMMUNES ==================== */}
-              <Route path="/notifications" element={
-                <Protected allowedRoles={['client', 'worker']}>
-                  <NotificationsPage />
-                </Protected>
-              } />
-
-              {/* ==================== 404 ==================== */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ChatProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </Provider>
-  );
-}
+export default App;

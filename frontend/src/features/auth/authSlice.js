@@ -1,13 +1,11 @@
-// features/auth/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// Login
 export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       return response.data;
@@ -17,12 +15,11 @@ export const login = createAsyncThunk(
   }
 );
 
-// Register
 export const register = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/register', userData);
+      const response = await api.post('/auth/register', userData);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       return response.data;
@@ -32,26 +29,25 @@ export const register = createAsyncThunk(
   }
 );
 
-// Verify OTP
-export const verifyOTP = createAsyncThunk(
-  'auth/verifyOTP',
-  async ({ email, otp }, { rejectWithValue }) => {
+export const logout = createAsyncThunk(
+  'auth/logout',
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await api.post('/verify-otp', { email, otp });
-      localStorage.setItem('token', response.data.token);
-      return response.data;
+      await api.post('/auth/logout');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      return true;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Invalid OTP');
+      return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-// Get current user
 export const getCurrentUser = createAsyncThunk(
   'auth/getUser',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/user');
+      const response = await api.get('/auth/me');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
@@ -59,30 +55,28 @@ export const getCurrentUser = createAsyncThunk(
   }
 );
 
+const initialState = {
+  user: JSON.parse(localStorage.getItem('user')) || null,
+  token: localStorage.getItem('token') || null,
+  isAuthenticated: !!localStorage.getItem('token'),
+  isLoading: false,
+  error: null,
+};
+
 const authSlice = createSlice({
   name: 'auth',
-  initialState: {
-    user: JSON.parse(localStorage.getItem('user')) || null,
-    token: localStorage.getItem('token') || null,
-    isLoading: false,
-    error: null,
-    isAuthenticated: !!localStorage.getItem('token'),
-  },
+  initialState,
   reducers: {
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    },
     clearError: (state) => {
       state.error = null;
+    },
+    updateUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload };
+      localStorage.setItem('user', JSON.stringify(state.user));
     },
   },
   extraReducers: (builder) => {
     builder
-      // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -97,7 +91,6 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      // Register
       .addCase(register.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -112,12 +105,16 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      // Get User
+      .addCase(logout.fulfilled, (state) => {
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+      })
       .addCase(getCurrentUser.fulfilled, (state, action) => {
-        state.user = action.payload.user;
+        state.user = action.payload;
       });
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { clearError, updateUser } = authSlice.actions;
 export default authSlice.reducer;

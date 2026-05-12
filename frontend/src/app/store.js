@@ -1,29 +1,28 @@
-// app/store.js
+// src/app/store.js - حذف الـ imports اللي ماعندهاش ملفات
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from '../features/auth/authSlice';
 import clientReducer from '../features/client/clientSlice';
-import workersReducer from '../features/worker/workersSlice';
 import workerReducer from '../features/worker/workerSlice';
-import messagesReducer from '../features/messages/messagesSlice';
-import favoritesReducer from '../features/favorites/favoritesSlice';
-import notificationsReducer from '../features/notifications/notificationsSlice';
+import serviceReducer from '../features/services/serviceSlice';
+import interestReducer from '../features/interests/interestSlice';
+import orderReducer from '../features/orders/orderSlice';
+import conversationReducer from '../features/conversations/conversationSlice';
+import adminReducer from '../features/admin/adminSlice';
+import uiReducer from '../features/ui/uiSlice';
+
+// ✅ حذف requestSlice, messageSlice, notificationSlice مؤقتاً
 
 export const store = configureStore({
   reducer: {
-    // Authentication (Client + Worker + Admin)
     auth: authReducer,
-
-    // Client Panel
-    client: clientReducer,        // Dashboard, طلباتي, الملف الشخصي, الإعدادات
-    workers: workersReducer,      // البحث عن عمال
-    
-    // Worker Panel
-    worker: workerReducer,        // Dashboard, الطلبات, خدماتي, الأرباح, جدول المواعيد, الملف الشخصي, الإعدادات
-    
-    // Common (Client + Worker)
-    messages: messagesReducer,    // المحادثات والرسائل
-    favorites: favoritesReducer,  // المفضلة (Client فقط)
-    notifications: notificationsReducer, // الإشعارات (Client + Worker)
+    client: clientReducer,
+    worker: workerReducer,
+    services: serviceReducer,
+    interests: interestReducer,
+    orders: orderReducer,
+    conversations: conversationReducer,
+    admin: adminReducer,
+    ui: uiReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

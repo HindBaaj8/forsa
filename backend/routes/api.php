@@ -2,162 +2,158 @@
 
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\API\ServiceController;
-use App\Http\Controllers\API\RequestController;
-use App\Http\Controllers\API\UserController;
-use App\Http\Controllers\API\OrderController;
-use App\Http\Controllers\API\MessageController;
-use App\Http\Controllers\API\FavoriteController;
-use App\Http\Controllers\API\NotificationController;
-use App\Http\Controllers\API\PasswordResetController;
-use App\Http\Controllers\API\DashboardController;
-use App\Http\Controllers\API\ConversationController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\ServiceRequestController;
+use App\Http\Controllers\InterestController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\MessageController;
+use App\Http\Controllers\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
-| PUBLIC ROUTES
+| AUTH
 |--------------------------------------------------------------------------
 */
+Route::prefix('auth')->group(function () {
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
 
-Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink']);
-Route::post('/reset-password', [PasswordResetController::class, 'reset']);
-
-Route::get('/test', fn () => response()->json(['message' => 'API is working']));
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/me', [AuthController::class, 'me']);
+    });
+});
 
 /*
 |--------------------------------------------------------------------------
-| AUTHENTICATED ROUTES
+| CATEGORIES (PUBLIC + ADMIN)
 |--------------------------------------------------------------------------
 */
+Route::prefix('categories')->group(function () {
 
+    Route::get('/', [CategoryController::class, 'index']);
+
+    Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+        Route::post('/', [CategoryController::class, 'store']);
+        Route::put('/{category}', [CategoryController::class, 'update']);
+        Route::delete('/{category}', [CategoryController::class, 'destroy']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| SERVICES
+|--------------------------------------------------------------------------
+*/
+Route::prefix('services')->group(function () {
+
+    Route::get('/', [ServiceController::class, 'index']);
+    Route::get('/{service}', [ServiceController::class, 'show']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+
+        Route::post('/', [ServiceController::class, 'store']);
+        Route::put('/{service}', [ServiceController::class, 'update']);
+        Route::delete('/{service}', [ServiceController::class, 'destroy']);
+
+        Route::middleware('admin')->group(function () {
+            Route::post('/{service}/approve', [ServiceController::class, 'approve']);
+            Route::post('/{service}/reject', [ServiceController::class, 'reject']);
+        });
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| REQUESTS
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->prefix('requests')->group(function () {
+
+    Route::get('/', [ServiceRequestController::class, 'index']);
+    Route::get('/{serviceRequest}', [ServiceRequestController::class, 'show']);
+
+    Route::post('/', [ServiceRequestController::class, 'store']);
+    Route::put('/{serviceRequest}', [ServiceRequestController::class, 'update']);
+    Route::delete('/{serviceRequest}', [ServiceRequestController::class, 'destroy']);
+
+    Route::post('/{serviceRequest}/cancel', [ServiceRequestController::class, 'cancel']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| INTERESTS
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->group(function () {
 
-    /*
-    |-------------------------
-    | AUTH
-    |-------------------------
-    */
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', [AuthController::class, 'user']);
+    // ✅ تحسين: استخدام POST بدل PUT لـ accept/reject (more RESTful)
+    Route::get('/requests/{requestId}/interests', [InterestController::class, 'index']);
+    Route::post('/requests/{requestId}/interests', [InterestController::class, 'store']);
 
-    /*
-    |-------------------------
-    | SHARED (ALL ROLES)
-    |-------------------------
-    */
-    Route::put('/user/profile', [UserController::class, 'updateProfile']);
-    Route::post('/user/change-password', [UserController::class, 'changePassword']);
+    Route::post('/interests/{interest}/accept', [InterestController::class, 'accept']);
+    Route::post('/interests/{interest}/reject', [InterestController::class, 'reject']);
+});
 
-    /*
-    |--------------------------------------------------------------------------
-    | CLIENT ROUTES
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('client')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| ORDERS
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
 
-        Route::get('/dashboard', [DashboardController::class, 'clientDashboard']);
-        Route::get('/requests', [RequestController::class, 'clientRequests']);
+    Route::get('/', [OrderController::class, 'index']);
+    Route::get('/{order}', [OrderController::class, 'show']);
 
-        Route::get('/favorites', [FavoriteController::class, 'index']);
-        Route::post('/favorites', [FavoriteController::class, 'store']);
-        Route::delete('/favorites/{id}', [FavoriteController::class, 'destroy']);
-    });
+    Route::post('/{order}/start', [OrderController::class, 'startWork']);
+    Route::post('/{order}/complete', [OrderController::class, 'completeWork']);
+    Route::post('/{order}/cancel', [OrderController::class, 'cancel']);
+});
 
-    /*
-    |--------------------------------------------------------------------------
-    | WORKER ROUTES
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('worker')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| CONVERSATIONS
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->prefix('conversations')->group(function () {
 
-        Route::get('/dashboard', [DashboardController::class, 'workerDashboard']);
+    Route::get('/', [ConversationController::class, 'index']);
+    Route::get('/{conversation}', [ConversationController::class, 'show']);
+    
+    // ✅ تحسين: أكثر وضوحاً
+    Route::get('/by-order/{order}', [ConversationController::class, 'getByOrder']);
+});
 
-        Route::get('/orders', [OrderController::class, 'workerOrders']);
+/*
+|--------------------------------------------------------------------------
+| MESSAGES
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->group(function () {
 
-        Route::get('/schedule', [OrderController::class, 'schedule']);
+    Route::get('/conversations/{conversation}/messages', [MessageController::class, 'index']);
+    Route::post('/conversations/{conversation}/messages', [MessageController::class, 'store']);
 
-        Route::get('/earnings', [DashboardController::class, 'workerEarnings']);
+    // ✅ تحسين: استخدام POST بدل PUT (better for actions)
+    Route::post('/messages/{message}/read', [MessageController::class, 'markAsRead']);
+    Route::post('/conversations/{conversation}/read-all', [MessageController::class, 'markAllAsRead']);
+});
 
-        Route::get('/services', [ServiceController::class, 'myServices']);
+/*
+|--------------------------------------------------------------------------
+| NOTIFICATIONS
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
 
-        Route::put('/profile', [UserController::class, 'updateProfile']);
-        Route::put('/notifications', [NotificationController::class, 'updateSettings']);
-    });
+    Route::get('/', [NotificationController::class, 'index']);
+    Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | ADMIN ROUTES
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('admin')->middleware('admin')->group(function () {
-
-        Route::get('/dashboard', [DashboardController::class, 'adminDashboard']);
-
-        Route::get('/users', [UserController::class, 'index']);
-        Route::put('/users/{id}', [UserController::class, 'update']);
-        Route::delete('/users/{id}', [UserController::class, 'destroy']);
-        Route::put('/users/{id}/status', [UserController::class, 'updateStatus']);
-
-        Route::get('/workers', [UserController::class, 'getWorkers']);
-        Route::put('/workers/{id}/status', [UserController::class, 'updateWorkerStatus']);
-
-        Route::get('/finance', [DashboardController::class, 'adminFinance']);
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | SERVICES (GLOBAL LOGIC)
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/services', [ServiceController::class, 'index']);
-    Route::get('/services/{id}', [ServiceController::class, 'show']);
-    Route::post('/services', [ServiceController::class, 'store']);
-    Route::put('/services/{id}', [ServiceController::class, 'update']);
-    Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
-
-    /*
-    |--------------------------------------------------------------------------
-    | REQUESTS (GLOBAL)
-    |--------------------------------------------------------------------------
-    */
-    Route::post('/requests', [RequestController::class, 'store']);
-    Route::put('/requests/{id}/status', [RequestController::class, 'updateStatus']);
-    Route::put('/requests/{id}/assign-worker', [RequestController::class, 'assignWorker']);
-    Route::delete('/requests/{id}', [RequestController::class, 'destroy']);
-
-    /*
-    |--------------------------------------------------------------------------
-    | ORDERS (WORKFLOW)
-    |--------------------------------------------------------------------------
-    */
-    Route::put('/orders/{id}/accept', [OrderController::class, 'accept']);
-    Route::put('/orders/{id}/start', [OrderController::class, 'startWork']);
-    Route::put('/orders/{id}/complete', [OrderController::class, 'complete']);
-    Route::put('/orders/{id}/cancel', [OrderController::class, 'cancel']);
-
-    /*
-    |--------------------------------------------------------------------------
-    | MESSAGING
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/conversations', [ConversationController::class, 'index']);
-    Route::post('/conversations', [ConversationController::class, 'store']);
-    Route::get('/conversations/{id}/messages', [ConversationController::class, 'messages']);
-
-    Route::post('/messages', [MessageController::class, 'store']);
-    Route::put('/messages/{id}/read', [MessageController::class, 'markAsRead']);
-    Route::put('/conversations/{id}/read-all', [MessageController::class, 'markAllAsRead']);
-
-    /*
-    |--------------------------------------------------------------------------
-    | NOTIFICATIONS
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::post('/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/{notification}', [NotificationController::class, 'destroy']);
 });

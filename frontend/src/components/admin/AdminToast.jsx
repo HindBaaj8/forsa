@@ -1,13 +1,33 @@
-// src/components/admin/AdminToast.jsx
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { CheckCircle, XCircle, AlertCircle, Info, X } from 'lucide-react';
 
-export default function AdminToast({ msg, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, []);
-  const bg = type === "success" ? "#dcfce7" : type === "error" ? "#fee2e2" : "#dbe7ff";
-  const color = type === "success" ? "#166534" : type === "error" ? "#991b1b" : "#1e3f7a";
+export default function AdminToast({ message, type = 'success', onClose, duration = 3000 }) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [duration, onClose]);
+
+  const icons = {
+    success: <CheckCircle size={18} />,
+    error: <XCircle size={18} />,
+    warning: <AlertCircle size={18} />,
+    info: <Info size={18} />,
+  };
+
+  const colors = {
+    success: '#10b981',
+    error: '#ef4444',
+    warning: '#f59e0b',
+    info: '#3b82f6',
+  };
+
   return (
-    <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:bg,color,padding:"12px 24px",borderRadius:50,fontFamily:"Cairo",fontWeight:800,fontSize:13,zIndex:9999,boxShadow:"0 8px 24px rgba(0,0,0,.12)",animation:"slideUp .2s"}}>
-      {msg}
+    <div className="admin-toast" style={{ borderRight: `4px solid ${colors[type]}` }}>
+      <span className="admin-toast__icon" style={{ color: colors[type] }}>{icons[type]}</span>
+      <span className="admin-toast__message">{message}</span>
+      <button className="admin-toast__close" onClick={onClose}><X size={14} /></button>
     </div>
   );
 }

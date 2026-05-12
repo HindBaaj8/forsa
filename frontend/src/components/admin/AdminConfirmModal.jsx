@@ -1,16 +1,23 @@
-// src/components/admin/AdminConfirmModal.jsx
-export default function AdminConfirmModal({ message, onConfirm, onClose }) {
+import React from 'react';
+import { AlertTriangle, X } from 'lucide-react';
+
+export default function AdminConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'تأكيد', cancelText = 'إلغاء' }) {
+  if (!isOpen) return null;
+
   return (
-    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{maxWidth:380}}>
-        <div className="modal-head">
-          <span className="modal-head-title">تأكيد الإجراء</span>
-          <button className="modal-close" onClick={onClose}>✕</button>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal modal--sm" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title" style={{ color: 'var(--error)' }}>{title || 'تأكيد الإجراء'}</h3>
+          <button className="modal-close" onClick={onClose}><X size={20} /></button>
         </div>
-        <p style={{fontSize:14,color:"var(--text2)",lineHeight:1.7}}>{message}</p>
+        <div className="modal-body" style={{ textAlign: 'center' }}>
+          <AlertTriangle size={48} style={{ color: 'var(--error)', marginBottom: 16 }} />
+          <p>{message || 'هل أنت متأكد من هذا الإجراء؟'}</p>
+        </div>
         <div className="modal-actions">
-          <button className="btn btn-ghost" onClick={onClose}>إلغاء</button>
-          <button className="btn btn-navy" style={{background:"var(--error)"}} onClick={()=>{onConfirm();onClose();}}>تأكيد</button>
+          <button className="btn btn--ghost" onClick={onClose}>{cancelText}</button>
+          <button className="btn btn--danger" onClick={onConfirm}>{confirmText}</button>
         </div>
       </div>
     </div>
