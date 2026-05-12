@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Send, Paperclip, Phone, Video } from 'lucide-react';
 import ClientLayout from '../layout/ClientLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { getConversations, getMessages, sendMessage, markAsRead } from '../../features/messages/messageSlice';
+import { getConversations, getMessages, sendMessage, markAsRead } from '../../features/messages/messagesSlice';
 
 export default function ClientMessages() {
   const dispatch = useDispatch();

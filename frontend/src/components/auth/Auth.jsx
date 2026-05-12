@@ -3,12 +3,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
-import '../styles/Auth.css';
+import '../../styles/Auth.css';
 import { 
   Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, Check, AlertCircle,
   Shield, Smartphone, ChevronLeft
 } from 'lucide-react';
-import '../styles/Auth.css';
+import '../../styles/Auth.css';
 
 const maskEmail = (e) => {
   const [u, d] = e.split('@');
@@ -232,7 +232,7 @@ function RegisterForm({ onSwitch }) {
     setLoading(true);
     
     try {
-      const response = await api.post('/register', {
+      const response = await api.post('/auth/register', {
         first_name: form.firstName,
         last_name: form.lastName,
         email: form.email,

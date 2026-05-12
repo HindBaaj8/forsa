@@ -1,94 +1,140 @@
-// features/services/serviceSlice.js
-import { createCrudSlice } from '../../utils/createCrudSlice';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// Custom thunks for service-specific operations
+/* =========================
+   THUNKS
+========================= */
+
+// جلب جميع الخدمات
+export const fetchServices = createAsyncThunk(
+  'services/fetchAll',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get('/services');
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Error loading services');
+    }
+  }
+);
+
+// خدمة في انتظار الموافقة
+export const fetchPendingServices = createAsyncThunk(
+  'services/fetchPending',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get('/services/pending');
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message);
+    }
+  }
+);
+
+// approve
 export const approveService = createAsyncThunk(
   'services/approve',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/services/${id}/approve`);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      const res = await api.post(`/services/${id}/approve`);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message);
     }
   }
 );
 
+// reject
 export const rejectService = createAsyncThunk(
   'services/reject',
   async ({ id, reason }, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/services/${id}/reject`, { reason });
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      const res = await api.post(`/services/${id}/reject`, { reason });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message);
     }
   }
 );
 
-export const getPendingServices = createAsyncThunk(
-  'services/getPending',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/services/pending');
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
-    }
-  }
-);
+/* =========================
+   STATE
+========================= */
 
-// Create base CRUD slice
-const { slice, thunks, actions } = createCrudSlice({
-  name: 'services',
-  endpoint: '/services',
-  transformResponse: (data) => data,
-});
+const initialState = {
+  items: [],
+  pendingItems: [],
+  currentItem: null,
+  isLoading: false,
+  error: null,
+};
 
-// Add custom reducers
+/* =========================
+   SLICE
+========================= */
+
 const serviceSlice = createSlice({
-  ...slice,
+  name: 'services',
+  initialState,
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+    setCurrentService: (state, action) => {
+      state.currentItem = action.payload;
+    },
+  },
+
   extraReducers: (builder) => {
-    // Add base CRUD reducers
-    slice.extraReducers(builder);
-    
-    // Add custom reducers
     builder
+
+      // ===== FETCH ALL =====
+      .addCase(fetchServices.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchServices.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = action.payload?.data || action.payload || [];
+      })
+      .addCase(fetchServices.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+
+      // ===== PENDING =====
+      .addCase(fetchPendingServices.fulfilled, (state, action) => {
+        state.pendingItems = action.payload?.data || action.payload || [];
+      })
+
+      // ===== APPROVE =====
       .addCase(approveService.fulfilled, (state, action) => {
-        const index = state.items.findIndex(i => i.id === action.payload.id);
-        if (index !== -1) {
-          state.items[index] = action.payload;
-        }
-        if (state.currentItem?.id === action.payload.id) {
-          state.currentItem = action.payload;
+        const updated = action.payload;
+
+        const i = state.items.findIndex(s => s.id === updated.id);
+        if (i !== -1) state.items[i] = updated;
+
+        if (state.currentItem?.id === updated.id) {
+          state.currentItem = updated;
         }
       })
+
+      // ===== REJECT =====
       .addCase(rejectService.fulfilled, (state, action) => {
-        const index = state.items.findIndex(i => i.id === action.payload.id);
-        if (index !== -1) {
-          state.items[index] = action.payload;
+        const updated = action.payload;
+
+        const i = state.items.findIndex(s => s.id === updated.id);
+        if (i !== -1) state.items[i] = updated;
+
+        if (state.currentItem?.id === updated.id) {
+          state.currentItem = updated;
         }
-        if (state.currentItem?.id === action.payload.id) {
-          state.currentItem = action.payload;
-        }
-      })
-      .addCase(getPendingServices.fulfilled, (state, action) => {
-        state.pendingItems = action.payload.data || action.payload;
       });
   },
 });
 
-// Selectors
-export const selectAllServices = (state) => state.services.items;
-export const selectCurrentService = (state) => state.services.currentItem;
-export const selectServicesLoading = (state) => state.services.isLoading;
-export const selectServicesError = (state) => state.services.error;
-export const selectServicesPagination = (state) => state.services.pagination;
-export const selectPendingServices = (state) => state.services.pendingItems || [];
+/* =========================
+   EXPORTS
+========================= */
 
-// Export actions and thunks
-export const serviceActions = { ...actions, approveService, rejectService, getPendingServices };
-export const serviceThunks = { ...thunks, approveService, rejectService, getPendingServices };
-
+export const { clearError, setCurrentService } = serviceSlice.actions;
 export default serviceSlice.reducer;

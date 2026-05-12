@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Send, Phone, Video } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { getConversations, getMessages, sendMessage, markAsRead } from '../../features/messages/messageSlice';
+import { getConversations, getMessages, sendMessage, markAsRead } from '../../features/messages/messagesSlice';
 
 export default function WorkerMessages() {
   const dispatch = useDispatch();

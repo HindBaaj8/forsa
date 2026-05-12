@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon, Clock, MapPin, CheckCircle, XCircle } from 'l
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Badge from '../common/Badge';
-import { getWorkerSchedule, updateAppointmentStatus } from '../../features/worker/workerSlice';
+import { getWorkerSchedule, updateScheduleStatus } from '../../features/worker/workerSlice';
 import { toast } from 'react-hot-toast';
 
 export default function WorkerSchedule() {
@@ -18,7 +18,7 @@ export default function WorkerSchedule() {
   }, [dispatch, selectedDate, view]);
 
   const handleStatus = async (id, status) => {
-    await dispatch(updateAppointmentStatus({ id, status }));
+    await dispatch(updateScheduleStatus({ id, status }));
     toast.success(status === 'confirmed' ? 'تم تأكيد الموعد' : 'تم إلغاء الموعد');
     dispatch(getWorkerSchedule({ date: selectedDate, view }));
   };
