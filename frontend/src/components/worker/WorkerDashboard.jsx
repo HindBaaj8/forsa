@@ -5,7 +5,7 @@ import { DollarSign, ShoppingBag, Package, Star, TrendingUp, Calendar, MessageCi
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getWorkerDashboard } from '../../features/worker/workerSlice';
-
+import '../../styles/Worker.css';
 function StatCard({ title, value, icon: Icon, color, trend }) {
   return (
     <div className="stat-card">

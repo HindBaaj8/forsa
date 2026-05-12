@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import ClientLayout from '../components/layout/ClientLayout';
 import WorkerLayout from '../components/layout/WorkerLayout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-
+import '../styles/Dashboard.css';
 // Helper functions
 const getNotificationIcon = (type) => {
   const icons = {

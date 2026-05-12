@@ -4,7 +4,7 @@ import { Search, Filter, Star, MapPin, Briefcase } from 'lucide-react';
 import ClientLayout from '../layout/ClientLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { searchWorkers, getFilters } from '../../features/client/clientSlice';
-
+import '../../styles/Client.css'; // فقط إذا styles داخل components
 export default function ClientSearch() {
   const dispatch = useDispatch();
   const { workers, filters, isLoading } = useSelector((state) => state.client);

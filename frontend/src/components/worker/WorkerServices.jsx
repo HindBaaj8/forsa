@@ -8,6 +8,7 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { getWorkerServices, createService, updateService, deleteService, toggleService } from '../../features/worker/workerSlice';
 import { toast } from 'react-hot-toast';
+import '../../styles/Worker.css';
 
 const CATEGORIES = [
   { value: 'electrical', label: 'كهرباء', icon: '⚡' },

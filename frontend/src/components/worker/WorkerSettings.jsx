@@ -5,6 +5,7 @@ import { Bell, Shield, CreditCard, LogOut, Trash2, DollarSign } from 'lucide-rea
 import WorkerLayout from '../layout/WorkerLayout';
 import { logout } from '../../features/auth/authSlice';
 import { toast } from 'react-hot-toast';
+import '../../styles/Worker.css';
 
 export default function WorkerSettings() {
   const dispatch = useDispatch();

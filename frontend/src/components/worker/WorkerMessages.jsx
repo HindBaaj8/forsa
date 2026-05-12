@@ -4,6 +4,7 @@ import { Send, Phone, Video } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getConversations, getMessages, sendMessage, markAsRead } from '../../features/messages/messagesSlice';
+import '../../styles/Worker.css';
 
 export default function WorkerMessages() {
   const dispatch = useDispatch();

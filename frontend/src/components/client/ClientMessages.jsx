@@ -4,7 +4,7 @@ import { Send, Paperclip, Phone, Video } from 'lucide-react';
 import ClientLayout from '../layout/ClientLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getConversations, getMessages, sendMessage, markAsRead } from '../../features/messages/messagesSlice';
-
+import '../../styles/Client.css'; // فقط إذا styles داخل components
 export default function ClientMessages() {
   const dispatch = useDispatch();
   const { conversations, currentConversation, messages, isLoading } = useSelector((state) => state.messages);

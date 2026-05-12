@@ -9,7 +9,7 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { getClientRequests, createRequest, cancelRequest, deleteRequest } from '../../features/client/clientSlice';
 import { toast } from 'react-hot-toast';
-
+import '../../styles/Client.css'; // فقط إذا styles داخل components
 const CATEGORIES = [
   { value: 'electrical', label: 'كهرباء', icon: '⚡' },
   { value: 'plumbing', label: 'سباكة', icon: '💧' },

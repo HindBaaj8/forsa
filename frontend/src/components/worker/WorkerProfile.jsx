@@ -7,6 +7,7 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { updateWorkerProfile } from '../../features/worker/workerSlice';
 import { toast } from 'react-hot-toast';
+import '../../styles/Worker.css';
 
 export default function WorkerProfile() {
   const dispatch = useDispatch();

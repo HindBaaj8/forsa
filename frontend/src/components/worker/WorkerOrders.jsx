@@ -8,6 +8,7 @@ import Badge from '../common/Badge';
 import Modal from '../common/Modal';
 import { getWorkerOrders, acceptOrder, rejectOrder, startOrder, completeOrder } from '../../features/worker/workerSlice';
 import { toast } from 'react-hot-toast';
+import '../../styles/Worker.css';
 
 export default function WorkerOrders() {
   const dispatch = useDispatch();

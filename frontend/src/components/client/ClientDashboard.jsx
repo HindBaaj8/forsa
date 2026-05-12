@@ -5,6 +5,7 @@ import { ClipboardList, MessageCircle, Heart, Search, Clock, CheckCircle, Calend
 import ClientLayout from '../layout/ClientLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getClientDashboard } from '../../features/client/clientSlice';
+import '../../styles/Client.css'; 
 
 function StatCard({ title, value, icon: Icon, color }) {
   return (

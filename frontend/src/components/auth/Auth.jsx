@@ -82,7 +82,7 @@ function LoginForm({ onSwitch }) {
     setLoading(true);
     
     try {
-      const response = await api.post('/login', { email, password: pass });
+      const response = await api.post('/auth/login', { email, password: pass });
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
