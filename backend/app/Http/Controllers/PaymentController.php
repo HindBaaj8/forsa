@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentController extends Controller
 {
@@ -16,7 +17,7 @@ class PaymentController extends Controller
     // Get payments for authenticated user
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::user();
         
         $payments = Payment::where('client_id', $user->id)
             ->orWhere('worker_id', $user->id)
@@ -30,7 +31,7 @@ class PaymentController extends Controller
     // Get payment by order
     public function getByOrder(Order $order)
     {
-        if (!in_array(auth()->id(), [$order->client_id, $order->worker_id]) && auth()->user()->role !== 'admin') {
+        if (!in_array(Auth::id(), [$order->client_id, $order->worker_id]) && Auth::user()->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -54,7 +55,7 @@ class PaymentController extends Controller
 
         $order = Order::findOrFail($validated['order_id']);
 
-        if ($order->client_id !== auth()->id()) {
+        if ($order->client_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -68,6 +69,7 @@ class PaymentController extends Controller
             'client_secret' => 'mock_client_secret_' . uniqid(),
             'amount' => $validated['amount'],
             'currency' => 'MAD',
+            'order_id' => $order->id
         ]);
     }
 
@@ -82,7 +84,7 @@ class PaymentController extends Controller
 
         $order = Order::findOrFail($validated['order_id']);
 
-        if ($order->client_id !== auth()->id()) {
+        if ($order->client_id !== Auth::id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -116,7 +118,7 @@ class PaymentController extends Controller
     // Get payment status
     public function status(Order $order)
     {
-        if (!in_array(auth()->id(), [$order->client_id, $order->worker_id]) && auth()->user()->role !== 'admin') {
+        if (!in_array(Auth::id(), [$order->client_id, $order->worker_id]) && Auth::user()->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 

@@ -7,6 +7,7 @@ use App\Models\Favorite;
 use App\Models\User;
 use App\Models\Review;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash; // 🔥 أضف هذا
 
 class ClientController extends Controller
 {
@@ -27,7 +28,7 @@ class ClientController extends Controller
             'completedRequests' => ServiceRequest::where('client_id', $userId)
                 ->where('status', 'completed')
                 ->count(),
-            'totalSpent' => 0, // Will be calculated from payments
+            'totalSpent' => 0,
             'favorites' => Favorite::where('client_id', $userId)->count(),
         ];
 
@@ -49,6 +50,83 @@ class ClientController extends Controller
             'stats' => $stats,
             'recentRequests' => $recentRequests,
             'featuredWorkers' => $featuredWorkers,
+        ]);
+    }
+
+    /**
+     * 🔥🔥🔥 أضف هذه الدالة -最重要的是 🔥🔥🔥
+     * Get client requests (طلبات العميل)
+     */
+    public function requests()
+    {
+        try {
+            $userId = auth()->id();
+            
+            $requests = ServiceRequest::where('client_id', $userId)
+                ->with('category')
+                ->latest()
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => $requests,
+                'total' => $requests->count()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 🔥 Search workers (بحث عن عمال)
+     */
+    public function searchWorkers(Request $request)
+    {
+        $query = User::where('role', 'worker')
+            ->where('status', 'active');
+        
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'LIKE', "%{$search}%")
+                  ->orWhere('last_name', 'LIKE', "%{$search}%")
+                  ->orWhere('city', 'LIKE', "%{$search}%");
+            });
+        }
+        
+        if ($request->has('category_id')) {
+            $query->whereHas('services', function($q) use ($request) {
+                $q->where('category_id', $request->category_id);
+            });
+        }
+        
+        if ($request->has('city')) {
+            $query->where('city', $request->city);
+        }
+        
+        $workers = $query->paginate(20);
+        
+        return response()->json($workers);
+    }
+
+    /**
+     * 🔥 Get filters for search (فلاتر البحث)
+     */
+    public function getFilters()
+    {
+        $categories = \App\Models\Category::all();
+        $cities = User::where('role', 'worker')
+            ->whereNotNull('city')
+            ->distinct()
+            ->pluck('city');
+        
+        return response()->json([
+            'categories' => $categories,
+            'cities' => $cities
         ]);
     }
 

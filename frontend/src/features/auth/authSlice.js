@@ -55,7 +55,7 @@ export const getCurrentUser = createAsyncThunk(
   }
 );
 
-// ✅ Add updateProfile thunk
+// 🔥🔥🔥 Update Profile - التصحيح 🔥🔥🔥
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (profileData, { rejectWithValue }) => {
@@ -70,16 +70,18 @@ export const updateProfile = createAsyncThunk(
         config.headers['Content-Type'] = 'application/json';
       }
       
-      const response = await api.post('/auth/me', profileData, config);
+      // ✅ استعمل PUT بدل POST
+      const response = await api.put('/auth/me', profileData, config);
       
-      // ✅ Update localStorage
+      // ✅ تحديث localStorage
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const updatedUser = response.data.data || response.data;
+      const updatedUser = response.data.user || response.data.data || response.data;
       const newUser = { ...currentUser, ...updatedUser };
       localStorage.setItem('user', JSON.stringify(newUser));
       
       return response.data;
     } catch (error) {
+      console.error('Update profile error:', error.response?.data);
       const errors = error.response?.data?.errors;
       const message = errors ? Object.values(errors).flat()[0] : error.response?.data?.message;
       return rejectWithValue(message || 'Failed to update profile');
@@ -87,7 +89,6 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
-// ✅ Add changePassword thunk
 export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async ({ current_password, new_password, new_password_confirmation }, { rejectWithValue }) => {
@@ -120,14 +121,14 @@ const authSlice = createSlice({
       state.error = null;
     },
     updateUser: (state, action) => {
-      // ✅ تحديث user فـ Redux state
+      // ✅ تحديث user في Redux state
       state.user = { ...state.user, ...action.payload };
       // ✅ تحديث localStorage
       localStorage.setItem('user', JSON.stringify(state.user));
     },
-    // ✅ تحديث من Redux فقط
     setUser: (state, action) => {
       state.user = action.payload;
+      state.isAuthenticated = true;
       localStorage.setItem('user', JSON.stringify(action.payload));
     },
   },
@@ -179,7 +180,8 @@ const authSlice = createSlice({
       })
       .addCase(getCurrentUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload.data || action.payload;
+        state.user = action.payload.user || action.payload.data || action.payload;
+        state.isAuthenticated = true;
         // ✅ تحديث localStorage
         if (state.user) {
           localStorage.setItem('user', JSON.stringify(state.user));
@@ -190,14 +192,15 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
       
-      // Update Profile
+      // 🔥 Update Profile - يتغير الـ Sidebar تلقائياً
       .addCase(updateProfile.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        const updatedUser = action.payload.data || action.payload;
+        // استخراج المستخدم المحدث من الـ response
+        const updatedUser = action.payload.user || action.payload.data || action.payload;
         state.user = { ...state.user, ...updatedUser };
         // ✅ تحديث localStorage
         localStorage.setItem('user', JSON.stringify(state.user));

@@ -14,6 +14,8 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\PaymentController; // 🔥 أضف هذا في الأعلى
+
 
 /*
 |--------------------------------------------------------------------------
@@ -185,4 +187,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::put('/workers/{worker}/approve', [AdminController::class, 'approveWorker']);
     Route::get('/finance', [AdminController::class, 'finance']);
     Route::get('/reports', [AdminController::class, 'reports']);
+});
+
+//payament
+Route::middleware('auth:sanctum')->prefix('payments')->group(function () {
+    Route::get('/', [PaymentController::class, 'index']);
+    Route::get('/order/{order}', [PaymentController::class, 'getByOrder']);
+    Route::post('/create-intent', [PaymentController::class, 'createPaymentIntent']);
+    Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
+    Route::get('/status/{order}', [PaymentController::class, 'status']);
 });

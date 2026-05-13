@@ -7,10 +7,11 @@ import serviceReducer from '../features/services/serviceSlice';
 import interestReducer from '../features/interests/interestSlice';
 import orderReducer from '../features/orders/orderSlice';
 import conversationReducer from '../features/conversations/conversationSlice';
-import messageReducer from '../features/messages/messagesSlice';      // ✅ أضف هذا
-import notificationReducer from '../features/notifications/notificationsSlice'; // ✅ أضف هذا
+import messageReducer from '../features/messages/messagesSlice';
+import notificationReducer from '../features/notifications/notificationsSlice';
 import adminReducer from '../features/admin/adminSlice';
 import uiReducer from '../features/ui/uiSlice';
+import paymentReducer from '../features/payment/paymentSlice'; // 🔥 أضف هذا
 
 export const store = configureStore({
   reducer: {
@@ -21,17 +22,18 @@ export const store = configureStore({
     interests: interestReducer,
     orders: orderReducer,
     conversations: conversationReducer,
-    messages: messageReducer,           // ✅ أضف هذا
-    notifications: notificationReducer, // ✅ أضف هذا
+    messages: messageReducer,
+    notifications: notificationReducer,
     admin: adminReducer,
     ui: uiReducer,
+    payment: paymentReducer, // 🔥 أضف هذا
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
-        ignoredActionPaths: ['payload.timestamp', 'payload.created_at', 'payload.updated_at'],
-        ignoredPaths: ['messages.typingUsers', 'notifications.items'],
+        ignoredActionPaths: ['payload.timestamp', 'payload.created_at', 'payload.updated_at', 'payload.paid_at'],
+        ignoredPaths: ['messages.typingUsers', 'notifications.items', 'payment.payments'],
       },
     }),
   devTools: process.env.NODE_ENV !== 'production',

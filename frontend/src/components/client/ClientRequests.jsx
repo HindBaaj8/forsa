@@ -9,14 +9,15 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { getClientRequests, createRequest, cancelRequest, deleteRequest } from '../../features/client/clientSlice';
 import { toast } from 'react-hot-toast';
-import '../../styles/Dashboard.css';// فقط إذا styles داخل components
+import '../../styles/Dashboard.css';
+
 const CATEGORIES = [
-  { value: 'electrical', label: 'كهرباء', icon: '⚡' },
-  { value: 'plumbing', label: 'سباكة', icon: '💧' },
-  { value: 'carpentry', label: 'نجارة', icon: '🔨' },
-  { value: 'cleaning', label: 'تنظيف', icon: '🧹' },
-  { value: 'cooking', label: 'طبخ', icon: '🍳' },
-  { value: 'design', label: 'تصميم', icon: '🎨' },
+  { id: 1, value: 'electrical', label: 'كهرباء', icon: '⚡' },
+  { id: 2, value: 'plumbing', label: 'سباكة', icon: '💧' },
+  { id: 3, value: 'carpentry', label: 'نجارة', icon: '🔨' },
+  { id: 4, value: 'cleaning', label: 'تنظيف', icon: '🧹' },
+  { id: 5, value: 'cooking', label: 'طبخ', icon: '🍳' },
+  { id: 6, value: 'design', label: 'تصميم', icon: '🎨' },
 ];
 
 export default function ClientRequests() {
@@ -24,7 +25,13 @@ export default function ClientRequests() {
   const { requests, isLoading } = useSelector((state) => state.client);
   const [filter, setFilter] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', category: '', budget: '', city: '' });
+  const [formData, setFormData] = useState({ 
+    title: '', 
+    description: '', 
+    category: '', 
+    budget: '', 
+    city: '' 
+  });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
@@ -44,13 +51,35 @@ export default function ClientRequests() {
     return Object.keys(e).length === 0;
   };
 
+  // 🔥🔥🔥 التصحيح الأساسي هنا 🔥🔥🔥
   const handleCreate = async () => {
     if (!validate()) return;
-    await dispatch(createRequest(formData));
-    toast.success('تم إنشاء الطلب بنجاح');
-    setModalOpen(false);
-    setFormData({ title: '', description: '', category: '', budget: '', city: '' });
-    dispatch(getClientRequests());
+    
+    // تحويل البيانات إلى الشكل المطلوب من Laravel
+    const requestData = {
+      title: formData.title,
+      description: formData.description,
+      category_id: Number(formData.category), // ⚡ تحويل string إلى number
+      budget: Number(formData.budget),        // تأكد من أن budget رقم
+      city: formData.city
+    };
+    
+    console.log('📤 البيانات المرسلة:', requestData); // للتأكد من البيانات
+    
+    try {
+      await dispatch(createRequest(requestData)).unwrap();
+      toast.success('تم إنشاء الطلب بنجاح');
+      setModalOpen(false);
+      setFormData({ title: '', description: '', category: '', budget: '', city: '' });
+      dispatch(getClientRequests());
+    } catch (error) {
+      console.error('❌ خطأ في الإرسال:', error);
+      if (error.status === 422) {
+        toast.error('تأكد من صحة البيانات المدخلة');
+      } else {
+        toast.error('حدث خطأ، حاول مرة أخرى');
+      }
+    }
   };
 
   const handleCancel = async (id) => {
@@ -86,50 +115,163 @@ export default function ClientRequests() {
       </div>
 
       <div className="requests-stats">
-        <div className={`stat-card-mini ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}><div className="stat-card-mini__num">{statusCounts.all}</div><div className="stat-card-mini__label">الكل</div></div>
-        <div className={`stat-card-mini ${filter === 'pending' ? 'active' : ''}`} onClick={() => setFilter('pending')}><div className="stat-card-mini__num stat-card-mini__num--pending">{statusCounts.pending}</div><div className="stat-card-mini__label">قيد الانتظار</div></div>
-        <div className={`stat-card-mini ${filter === 'in_discussion' ? 'active' : ''}`} onClick={() => setFilter('in_discussion')}><div className="stat-card-mini__num stat-card-mini__num--progress">{statusCounts.in_discussion}</div><div className="stat-card-mini__label">قيد المناقشة</div></div>
-        <div className={`stat-card-mini ${filter === 'completed' ? 'active' : ''}`} onClick={() => setFilter('completed')}><div className="stat-card-mini__num stat-card-mini__num--completed">{statusCounts.completed}</div><div className="stat-card-mini__label">مكتمل</div></div>
+        <div 
+          className={`stat-card-mini ${filter === 'all' ? 'active' : ''}`} 
+          onClick={() => setFilter('all')}
+        >
+          <div className="stat-card-mini__num">{statusCounts.all}</div>
+          <div className="stat-card-mini__label">الكل</div>
+        </div>
+        <div 
+          className={`stat-card-mini ${filter === 'pending' ? 'active' : ''}`} 
+          onClick={() => setFilter('pending')}
+        >
+          <div className="stat-card-mini__num stat-card-mini__num--pending">{statusCounts.pending}</div>
+          <div className="stat-card-mini__label">قيد الانتظار</div>
+        </div>
+        <div 
+          className={`stat-card-mini ${filter === 'in_discussion' ? 'active' : ''}`} 
+          onClick={() => setFilter('in_discussion')}
+        >
+          <div className="stat-card-mini__num stat-card-mini__num--progress">{statusCounts.in_discussion}</div>
+          <div className="stat-card-mini__label">قيد المناقشة</div>
+        </div>
+        <div 
+          className={`stat-card-mini ${filter === 'completed' ? 'active' : ''}`} 
+          onClick={() => setFilter('completed')}
+        >
+          <div className="stat-card-mini__num stat-card-mini__num--completed">{statusCounts.completed}</div>
+          <div className="stat-card-mini__label">مكتمل</div>
+        </div>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
-        <Button variant="gold" icon={Plus} onClick={() => setModalOpen(true)}>طلب جديد</Button>
+        <Button variant="gold" icon={Plus} onClick={() => setModalOpen(true)}>
+          طلب جديد
+        </Button>
       </div>
 
       <div className="requests-grid">
         {filteredRequests?.length === 0 ? (
-          <div className="empty-state"><div style={{ fontSize: 48 }}>📋</div><h3>لا توجد طلبات</h3><Button variant="navy" onClick={() => setModalOpen(true)}>أنشئ طلبك الأول</Button></div>
+          <div className="empty-state">
+            <div style={{ fontSize: 48 }}>📋</div>
+            <h3>لا توجد طلبات</h3>
+            <Button variant="navy" onClick={() => setModalOpen(true)}>
+              أنشئ طلبك الأول
+            </Button>
+          </div>
         ) : (
           filteredRequests?.map(req => (
             <div key={req.id} className="request-card">
               <div className="request-card__header">
-                <div className="request-card__title-wrapper"><span className="request-card__icon">{CATEGORIES.find(c => c.value === req.category)?.icon || '📋'}</span><h3 className="request-card__title">{req.title}</h3></div>
-                <Badge type={req.status}>{req.status === 'pending' ? 'قيد الانتظار' : req.status === 'in_discussion' ? 'قيد المناقشة' : req.status === 'completed' ? 'مكتمل' : 'ملغي'}</Badge>
+                <div className="request-card__title-wrapper">
+                  <span className="request-card__icon">
+                    {/* 🔥 عرض الأيقونة باستخدام category_id */}
+                    {CATEGORIES.find(c => c.id === req.category_id)?.icon || '📋'}
+                  </span>
+                  <h3 className="request-card__title">{req.title}</h3>
+                </div>
+                <Badge type={req.status}>
+                  {req.status === 'pending' ? 'قيد الانتظار' : 
+                   req.status === 'in_discussion' ? 'قيد المناقشة' : 
+                   req.status === 'completed' ? 'مكتمل' : 'ملغي'}
+                </Badge>
               </div>
               <p className="request-card__description">{req.description}</p>
               <div className="request-card__details">
-                <span>📍 {req.city}</span><span>💰 {req.budget} درهم</span><span>📅 {req.created_at?.split('T')[0]}</span>
+                <span>📍 {req.city}</span>
+                <span>💰 {req.budget} درهم</span>
+                <span>📅 {req.created_at?.split('T')[0]}</span>
               </div>
               <div className="request-card__actions">
                 {(req.status === 'pending' || req.status === 'in_discussion') && (
-                  <button className="btn btn--danger btn--sm" onClick={() => handleCancel(req.id)}><X size={14} /> إلغاء</button>
+                  <button 
+                    className="btn btn--danger btn--sm" 
+                    onClick={() => handleCancel(req.id)}
+                  >
+                    <X size={14} /> إلغاء
+                  </button>
                 )}
-                {req.status === 'completed' && <button className="btn btn--ghost btn--sm"><MessageCircle size={14} /> تقييم</button>}
-                <button className="btn btn--danger btn--sm" onClick={() => handleDelete(req.id)}><Trash2 size={14} /> حذف</button>
+                {req.status === 'completed' && (
+                  <button className="btn btn--ghost btn--sm">
+                    <MessageCircle size={14} /> تقييم
+                  </button>
+                )}
+                <button 
+                  className="btn btn--danger btn--sm" 
+                  onClick={() => handleDelete(req.id)}
+                >
+                  <Trash2 size={14} /> حذف
+                </button>
               </div>
             </div>
           ))
         )}
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="طلب خدمة جديد" onSave={handleCreate} saveText="نشر الطلب">
-        <Input label="عنوان الخدمة" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} error={errors.title} required />
-        <div className="form-group"><label className="form-label">وصف الخدمة *</label><textarea className={`form-input ${errors.description ? 'err' : ''}`} rows="4" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} /></div>
-        <div className="form-row">
-          <div className="form-group"><label className="form-label">نوع الخدمة *</label><select className={`form-input ${errors.category ? 'err' : ''}`} value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}><option value="">اختر</option>{CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.icon} {c.label}</option>)}</select></div>
-          <Input label="الميزانية (درهم)" type="number" value={formData.budget} onChange={(e) => setFormData({ ...formData, budget: e.target.value })} error={errors.budget} required />
+      {/* Modal */}
+      <Modal 
+        isOpen={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        title="طلب خدمة جديد" 
+        onSave={handleCreate} 
+        saveText="نشر الطلب"
+      >
+        <Input 
+          label="عنوان الخدمة" 
+          value={formData.title} 
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })} 
+          error={errors.title} 
+          required 
+        />
+        
+        <div className="form-group">
+          <label className="form-label">وصف الخدمة *</label>
+          <textarea 
+            className={`form-input ${errors.description ? 'err' : ''}`} 
+            rows="4" 
+            value={formData.description} 
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+          />
+          {errors.description && <span className="error-text">{errors.description}</span>}
         </div>
-        <Input label="المدينة" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} error={errors.city} required />
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">نوع الخدمة *</label>
+            {/* 🔥 التصحيح: value={c.id} وليس c.value */}
+            <select 
+              className={`form-input ${errors.category ? 'err' : ''}`} 
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            >
+              <option value="">اختر نوع الخدمة</option>
+              {CATEGORIES.map(c => (
+                <option key={c.id} value={c.id}>  {/* 🔥 value={c.id} */}
+                  {c.icon} {c.label}
+                </option>
+              ))}
+            </select>
+            {errors.category && <span className="error-text">{errors.category}</span>}
+          </div>
+          
+          <Input 
+            label="الميزانية (درهم)" 
+            type="number" 
+            value={formData.budget} 
+            onChange={(e) => setFormData({ ...formData, budget: e.target.value })} 
+            error={errors.budget} 
+            required 
+          />
+        </div>
+        
+        <Input 
+          label="المدينة" 
+          value={formData.city} 
+          onChange={(e) => setFormData({ ...formData, city: e.target.value })} 
+          error={errors.city} 
+          required 
+        />
       </Modal>
     </ClientLayout>
   );

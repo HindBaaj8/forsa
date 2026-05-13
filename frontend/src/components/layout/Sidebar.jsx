@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
@@ -29,6 +29,27 @@ export default function Sidebar({ role, onClose }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
+  // 🔥 أضف حالة محلية للمستخدم
+  const [currentUser, setCurrentUser] = useState(user);
+
+  // 🔥 تحديث المستخدم المحلي عندما يتغير user في Redux
+  useEffect(() => {
+    setCurrentUser(user);
+  }, [user]);
+
+  // 🔥 استمع للتغييرات في localStorage (إذا حدث تحديث من مكان آخر)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setCurrentUser(parsedUser);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const clientMenus = [
     { path: '/client', icon: LayoutDashboard, label: 'الرئيسية' },
@@ -69,11 +90,11 @@ export default function Sidebar({ role, onClose }) {
     if (onClose) onClose();
   };
 
-  // ✅ تحسين عرض الحروف الأولى
+  // ✅ تحسين عرض الحروف الأولى (يستخدم currentUser بدل user)
   const getInitials = () => {
-    if (!user) return 'م';
-    const firstInitial = user.first_name?.[0] || '';
-    const lastInitial = user.last_name?.[0] || '';
+    if (!currentUser) return 'م';
+    const firstInitial = currentUser.first_name?.[0] || '';
+    const lastInitial = currentUser.last_name?.[0] || '';
     return (firstInitial + lastInitial).toUpperCase() || 'م';
   };
 
@@ -83,12 +104,18 @@ export default function Sidebar({ role, onClose }) {
     return 'مدير';
   };
 
-  // ✅ الحصول على الصورة الرمزية
+  // ✅ الحصول على الصورة الرمزية (يستخدم currentUser)
   const getAvatar = () => {
-    if (user?.avatar) {
-      return user.avatar;
+    if (currentUser?.avatar) {
+      return currentUser.avatar;
     }
     return null;
+  };
+
+  // ✅ الحصول على الاسم الكامل
+  const getFullName = () => {
+    if (!currentUser) return 'مرحباً';
+    return `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'مستخدم';
   };
 
   return (
@@ -121,7 +148,7 @@ export default function Sidebar({ role, onClose }) {
         })}
       </div>
 
-      {/* User Section */}
+      {/* User Section - 🔥 يتغير تلقائياً عند التعديل */}
       <div className="sidebar__user">
         <div className="sidebar__avatar">
           {getAvatar() ? (
@@ -132,7 +159,7 @@ export default function Sidebar({ role, onClose }) {
         </div>
         <div>
           <div className="sidebar__user-name">
-            {user?.first_name} {user?.last_name}
+            {getFullName()}
           </div>
           <div className="sidebar__user-role">{getRoleName()}</div>
         </div>

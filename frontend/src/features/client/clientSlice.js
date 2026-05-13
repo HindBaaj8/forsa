@@ -2,34 +2,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// Dashboard - ✅ تصحيح: استعمل /requests بدل /client/dashboard
+// Dashboard
 export const getClientDashboard = createAsyncThunk(
   'client/dashboard',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/requests');
-      return {
-        stats: {
-          activeRequests: response.data?.data?.filter(r => r.status === 'pending').length || 0,
-          completedRequests: response.data?.data?.filter(r => r.status === 'completed').length || 0,
-          totalSpent: 0,
-          favorites: 0,
-        },
-        recentRequests: response.data?.data?.slice(0, 5) || [],
-        featuredServices: [],
-      };
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
-    }
-  }
-);
-
-// Requests - ✅ صحيح
-export const getClientRequests = createAsyncThunk(
-  'client/getRequests',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/requests');
+      const response = await api.get('/client/dashboard');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
@@ -37,7 +15,20 @@ export const getClientRequests = createAsyncThunk(
   }
 );
 
-// Create Request - ✅ صحيح
+// Requests
+export const getClientRequests = createAsyncThunk(
+  'client/getRequests',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/client/requests');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+// Create Request
 export const createRequest = createAsyncThunk(
   'client/createRequest',
   async (requestData, { rejectWithValue }) => {
@@ -50,7 +41,7 @@ export const createRequest = createAsyncThunk(
   }
 );
 
-// Cancel Request - ✅ صحيح
+// Cancel Request
 export const cancelRequest = createAsyncThunk(
   'client/cancelRequest',
   async (id, { rejectWithValue }) => {
@@ -63,7 +54,7 @@ export const cancelRequest = createAsyncThunk(
   }
 );
 
-// Delete Request - ✅ صحيح
+// Delete Request
 export const deleteRequest = createAsyncThunk(
   'client/deleteRequest',
   async (id, { rejectWithValue }) => {
@@ -76,33 +67,37 @@ export const deleteRequest = createAsyncThunk(
   }
 );
 
-// Update Profile - ⚠️ تصحيح: استعمل POST بدل PUT
+// 🔥🔥🔥 Update Profile - التصحيح 🔥🔥🔥
 export const updateProfile = createAsyncThunk(
   'client/updateProfile',
   async (profileData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/me', profileData);
+      // ✅ استعمل PUT مع المسار /auth/me (مطابق لـ routes)
+      const response = await api.put('/auth/me', profileData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      console.error('Update profile error:', error.response?.data);
+      return rejectWithValue(error.response?.data?.message || 'حدث خطأ في تحديث الملف الشخصي');
     }
   }
 );
 
-// Update Notifications - ⚠️ مؤقتاً علق
+// Update Notifications - worker route (لأنه نفس الـ API)
 export const updateNotifications = createAsyncThunk(
   'client/updateNotifications',
   async (notifications, { rejectWithValue }) => {
     try {
-      // TODO: أضف route فـ Backend
-      return notifications;
+      // استعمل المسار الخاص بالعميل أو الحرفي حسب الدور
+      const response = await api.put('/worker/notifications', notifications);
+      return response.data;
     } catch (error) {
+      console.error('Update notifications error:', error.response?.data);
       return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-// Favorites - ✅ صحيح (إذا عندك routes favorites فـ Backend)
+// Favorites
 export const getFavorites = createAsyncThunk(
   'client/getFavorites',
   async (_, { rejectWithValue }) => {
@@ -127,12 +122,12 @@ export const removeFavorite = createAsyncThunk(
   }
 );
 
-// Search Workers - ⚠️ تصحيح: استعمل /services
+// Search Workers
 export const searchWorkers = createAsyncThunk(
   'client/searchWorkers',
   async ({ query, category, city }, { rejectWithValue }) => {
     try {
-      const response = await api.get('/services', { 
+      const response = await api.get('/client/workers/search', { 
         params: { search: query, category_id: category, city } 
       });
       return response.data;
@@ -142,26 +137,20 @@ export const searchWorkers = createAsyncThunk(
   }
 );
 
-// Get Filters - ⚠️ تصحيح: جلب من /categories
+// Get Filters
 export const getFilters = createAsyncThunk(
   'client/getFilters',
   async (_, { rejectWithValue }) => {
     try {
-      const [categoriesRes, servicesRes] = await Promise.all([
-        api.get('/categories'),
-        api.get('/services')
-      ]);
-      return {
-        categories: categoriesRes.data.map(c => c.name),
-        cities: [...new Set(servicesRes.data?.data?.map(s => s.location) || [])]
-      };
+      const response = await api.get('/client/workers/filters');
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-// Change Password - ⚠️ مؤقتاً
+// Change Password
 export const changePassword = createAsyncThunk(
   'client/changePassword',
   async ({ current_password, new_password, confirm_password }, { rejectWithValue }) => {
@@ -234,12 +223,20 @@ const clientSlice = createSlice({
       .addCase(deleteRequest.fulfilled, (state, action) => {
         state.requests = state.requests.filter(r => r.id !== action.payload);
       })
-      // Profile
+      // Profile - 🔥 التصحيح
+      .addCase(updateProfile.pending, (state) => {
+        state.isLoading = true;
+      })
       .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
         state.profile = action.payload;
-        // تحديث user فـ localStorage
+        // تحديث user في localStorage
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        localStorage.setItem('user', JSON.stringify({ ...user, ...action.payload }));
+        localStorage.setItem('user', JSON.stringify({ ...user, ...action.payload.user }));
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       })
       // Favorites
       .addCase(getFavorites.fulfilled, (state, action) => {
