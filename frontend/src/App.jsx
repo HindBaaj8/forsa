@@ -2,14 +2,13 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectIsAuthenticated, selectUserRole } from './features/auth/authSelectors';
+import { useRealtime } from './hooks/useRealtime';
 
-// ✅ استدعاء جميع الـ CSS هنا
 import './styles/global.css';
 import './styles/variables.css';
 import './styles/Dashboard.css';
 import './styles/Auth.css';
 import './styles/Navbar.css';
-
 
 // Pages
 import Home from './pages/Home';
@@ -38,6 +37,8 @@ import WorkerEarnings from './components/worker/WorkerEarnings';
 import WorkerSchedule from './components/worker/WorkerSchedule';
 import WorkerProfile from './components/worker/WorkerProfile';
 import WorkerSettings from './components/worker/WorkerSettings';
+import WorkerChangePassword from './components/worker/WorkerChangePassword';
+import WorkerPaymentMethods from './components/worker/WorkerPaymentMethods';
 
 // Route Guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -56,6 +57,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 function App() {
+  useRealtime();
   return (
     <Routes>
       {/* Public Routes */}
@@ -151,6 +153,18 @@ function App() {
       <Route path="/worker/settings" element={
         <ProtectedRoute allowedRoles={['worker']}>
           <WorkerSettings />
+        </ProtectedRoute>
+      } />
+      
+      {/* ✅ Worker Extra Routes */}
+      <Route path="/worker/change-password" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerChangePassword />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/payment-methods" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerPaymentMethods />
         </ProtectedRoute>
       } />
 

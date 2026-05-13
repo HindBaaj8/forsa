@@ -8,14 +8,15 @@ import {
   getMessages, 
   sendMessage, 
   markAsRead,
-  setCurrentConversation 
+  setCurrentConversation,
+  receiveMessage  // ✅ أضف هذا
 } from '../../features/messages/messagesSlice';
+import { useConversationRealtime, useTyping } from '../../hooks/useRealtime'; // ✅ أضف hooks
 import '../../styles/Dashboard.css';
 
 export default function WorkerMessages() {
   const dispatch = useDispatch();
   
-  // ✅ Safe destructuring avec valeurs par défaut
   const {
     conversations = [],
     currentConversation = null,
@@ -26,6 +27,10 @@ export default function WorkerMessages() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // ✅ Subscribe to realtime for current conversation
+  useConversationRealtime(currentConversation?.id);
+  const { startTyping, stopTyping } = useTyping(currentConversation?.id);
 
   useEffect(() => {
     dispatch(getConversations());
@@ -50,17 +55,25 @@ export default function WorkerMessages() {
       message: newMessage.trim() 
     }));
     setNewMessage('');
+    stopTyping();
     setSending(false);
   };
 
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+    if (e.target.value.length > 0) {
+      startTyping();
+    } else {
+      stopTyping();
+    }
+  };
+
   const handleSelectConversation = (conv) => {
-    // ✅ Utiliser l'action creator au lieu du dispatch direct
     dispatch(setCurrentConversation(conv));
   };
 
   if (isLoading) return <LoadingSpinner />;
 
-  // ✅ Récupérer les messages de la conversation courante
   const currentMessages = messages[currentConversation?.id] || [];
 
   return (
@@ -87,9 +100,15 @@ export default function WorkerMessages() {
                 >
                   <div className="msg-conv__av">
                     {conv.participant?.name?.[0] || '?'}
+                    {conv.participant?.online && <span className="msg-conv__online" />}
                   </div>
-                  <div>
-                    <div className="msg-conv__name">{conv.participant?.name}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <div className="msg-conv__name">{conv.participant?.name}</div>
+                      <div className="msg-conv__time">
+                        {conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
+                    </div>
                     <div className="msg-conv__last">{conv.last_message || 'بدء محادثة'}</div>
                   </div>
                   {conv.unread_count > 0 && (
@@ -108,20 +127,19 @@ export default function WorkerMessages() {
               <div className="msg-topbar">
                 <div className="msg-conv__av">
                   {currentConversation.participant?.name?.[0] || '?'}
+                  {currentConversation.participant?.online && <span className="msg-conv__online" />}
                 </div>
                 <div>
                   <div className="msg-conv__name">
                     {currentConversation.participant?.name}
                   </div>
-                  <div className="msg-conv__online">● متصل</div>
+                  <div className="msg-conv__online-status">
+                    {currentConversation.participant?.online ? '● متصل' : '○ غير متصل'}
+                  </div>
                 </div>
                 <div style={{ marginRight: 'auto', display: 'flex', gap: 8 }}>
-                  <button className="btn btn--ghost btn--sm">
-                    <Phone size={14} />
-                  </button>
-                  <button className="btn btn--ghost btn--sm">
-                    <Video size={14} />
-                  </button>
+                  <button className="btn btn--ghost btn--sm"><Phone size={14} /></button>
+                  <button className="btn btn--ghost btn--sm"><Video size={14} /></button>
                 </div>
               </div>
 
@@ -141,13 +159,11 @@ export default function WorkerMessages() {
                         className={`msg-bubble msg-bubble--${isMe ? 'me' : 'them'}`}
                       >
                         <div className={`msg-text msg-text--${isMe ? 'me' : 'them'}`}>
-                          {msg.message || msg.body}
+                          {msg.message}
                         </div>
                         <div className={`msg-time msg-time--${isMe ? 'me' : ''}`}>
-                          {new Date(msg.created_at).toLocaleTimeString('ar-MA', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {new Date(msg.created_at).toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' })}
+                          {isMe && msg.is_read && <span className="msg-read"> ✓✓</span>}
                         </div>
                       </div>
                     );
@@ -161,7 +177,7 @@ export default function WorkerMessages() {
                   className="msg-field"
                   placeholder="اكتب رسالتك..."
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleTyping}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   rows={1}
                 />

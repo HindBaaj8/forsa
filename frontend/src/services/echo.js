@@ -7,7 +7,10 @@ window.Pusher = Pusher;
 let echoInstance = null;
 
 export const initializeEcho = (token) => {
+  console.log('🔧 Initializing Echo with token');
+  
   if (echoInstance) {
+    console.log('⚠️ Echo already initialized');
     return echoInstance;
   }
 
@@ -29,13 +32,22 @@ export const initializeEcho = (token) => {
     },
   };
 
-  echoInstance = new Echo(config);
+  console.log('📡 Echo config:', config);
+  
+  try {
+    echoInstance = new Echo(config);
+    console.log('✅ Echo initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Echo:', error);
+  }
+  
   return echoInstance;
 };
 
 export const getEcho = () => {
   if (!echoInstance) {
-    throw new Error('Echo not initialized. Call initializeEcho first.');
+    console.warn('⚠️ Echo not initialized yet!');
+    return null;
   }
   return echoInstance;
 };
@@ -44,9 +56,6 @@ export const disconnectEcho = () => {
   if (echoInstance) {
     echoInstance.disconnect();
     echoInstance = null;
+    console.log('🔌 Echo disconnected');
   }
-};
-
-export const isEchoConnected = () => {
-  return echoInstance !== null && echoInstance.connector?.socket?.readyState === WebSocket.OPEN;
 };

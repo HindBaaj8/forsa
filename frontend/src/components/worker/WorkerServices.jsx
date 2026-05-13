@@ -1,3 +1,4 @@
+// components/worker/WorkerServices.jsx
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Plus, Edit, Trash2, Power } from 'lucide-react';
@@ -22,6 +23,7 @@ const CATEGORIES = [
 export default function WorkerServices() {
   const dispatch = useDispatch();
   const { services = [], isLoading, error } = useSelector((state) => state.worker);
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [formData, setFormData] = useState({ 
@@ -34,12 +36,28 @@ export default function WorkerServices() {
   });
   const [errors, setErrors] = useState({});
 
+  // ✅ servicesArray مرة واحدة فقط
+  const servicesArray = Array.isArray(services) ? services : [];
+
+  // ✅ Force refresh when component mounts
   useEffect(() => {
-    dispatch(getWorkerServices());
+    const loadServices = async () => {
+      console.log('🔄 Loading services...');
+      const result = await dispatch(getWorkerServices());
+      console.log('📦 Result:', result);
+      console.log('📦 Payload:', result.payload);
+    };
+    loadServices();
   }, [dispatch]);
+
+  // ✅ Watch for services changes
+  useEffect(() => {
+    console.log('✅ Services in Redux updated:', services);
+  }, [services]);
 
   useEffect(() => {
     if (error) {
+      console.error('❌ Error:', error);
       toast.error(typeof error === 'string' ? error : 'حدث خطأ');
     }
   }, [error]);
@@ -69,19 +87,25 @@ export default function WorkerServices() {
       location: formData.city,
     };
     
+    console.log('📤 Sending data:', submitData);
+    
     try {
+      let result;
       if (editingService) {
-        await dispatch(updateService({ id: editingService.id, data: submitData })).unwrap();
+        result = await dispatch(updateService({ id: editingService.id, data: submitData })).unwrap();
+        console.log('✅ Update result:', result);
         toast.success('تم تحديث الخدمة');
       } else {
-        await dispatch(createService(submitData)).unwrap();
+        result = await dispatch(createService(submitData)).unwrap();
+        console.log('✅ Create result:', result);
         toast.success('تم إضافة الخدمة');
       }
       setModalOpen(false);
       setEditingService(null);
       setFormData({ title: '', description: '', category: '', price: '', city: '', is_active: true });
-      dispatch(getWorkerServices());
+      await dispatch(getWorkerServices());
     } catch (err) {
+      console.error('❌ Error:', err);
       const errorMessage = typeof err === 'string' ? err : err?.message || 'حدث خطأ';
       toast.error(errorMessage);
     }
@@ -105,25 +129,23 @@ export default function WorkerServices() {
     if (window.confirm(`هل أنت متأكد من حذف الخدمة "${title}"؟`)) {
       await dispatch(deleteService(id));
       toast.success('تم حذف الخدمة');
-      dispatch(getWorkerServices());
+      await dispatch(getWorkerServices());
     }
   };
 
   const handleToggle = async (id) => {
     await dispatch(toggleService(id));
     toast.success('تم تغيير حالة الخدمة');
-    dispatch(getWorkerServices());
+    await dispatch(getWorkerServices());
   };
 
   if (isLoading) return <LoadingSpinner />;
-
-  const servicesArray = Array.isArray(services) ? services : [];
 
   return (
     <WorkerLayout title="خدماتي">
       <div className="page-header">
         <h1 className="page-header__title">خدماتي</h1>
-        <p className="page-header__sub">الخدمات التي تقدمها للعملاء</p>
+        <p className="page-header__sub">الخدمات التي تقدمها للعملاء ({servicesArray.length} خدمات)</p>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>

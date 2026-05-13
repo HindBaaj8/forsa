@@ -1,90 +1,202 @@
-import React, { useEffect } from 'react';
+// components/worker/WorkerMessages.jsx
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { DollarSign, ShoppingBag, Package, Star, TrendingUp, Calendar, MessageCircle } from 'lucide-react';
+import { Send, Phone, Video } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { getWorkerDashboard } from '../../features/worker/workerSlice';
+import { 
+  getConversations, 
+  getMessages, 
+  sendMessage, 
+  markAsRead,
+  setCurrentConversation 
+} from '../../features/messages/messagesSlice';
+import { useConversationRealtime, useTyping } from '../../hooks/useRealtime';
 import '../../styles/Dashboard.css';
-function StatCard({ title, value, icon: Icon, color, trend }) {
-  return (
-    <div className="stat-card">
-      <div className="stat-card__top">
-        <div className="stat-card__label">{title}</div>
-        <div className={`stat-card__icon stat-card__icon--${color}`}><Icon size={20} /></div>
-      </div>
-      <div className="stat-card__num">{value?.toLocaleString() || 0}</div>
-      {trend && <div className={`stat-card__trend stat-card__trend--${trend > 0 ? 'up' : 'down'}`}><TrendingUp size={12} /> {Math.abs(trend)}%</div>}
-    </div>
-  );
-}
 
-export default function WorkerDashboard() {
+export default function WorkerMessages() {
   const dispatch = useDispatch();
-  const { dashboard, isLoading } = useSelector((state) => state.worker);
-  const { user } = useSelector((state) => state.auth);
+  
+  const {
+    conversations = [],
+    currentConversation = null,
+    messages = {},
+    isLoading = false,
+  } = useSelector((state) => state.messages || {});
+  
+  const [newMessage, setNewMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  // ✅ Subscribe to realtime for current conversation
+  useConversationRealtime(currentConversation?.id);
+  const { startTyping, stopTyping } = useTyping(currentConversation?.id);
 
   useEffect(() => {
-    dispatch(getWorkerDashboard());
+    dispatch(getConversations());
   }, [dispatch]);
 
-  if (isLoading) return <LoadingSpinner fullPage />;
+  useEffect(() => {
+    if (currentConversation) {
+      dispatch(getMessages(currentConversation.id));
+      dispatch(markAsRead(currentConversation.id));
+    }
+  }, [currentConversation, dispatch]);
 
-  const stats = dashboard?.stats || {};
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, currentConversation]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || !currentConversation || sending) return;
+    setSending(true);
+    await dispatch(sendMessage({ 
+      conversationId: currentConversation.id, 
+      message: newMessage.trim() 
+    }));
+    setNewMessage('');
+    stopTyping();
+    setSending(false);
+  };
+
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+    if (e.target.value.length > 0) {
+      startTyping();
+    } else {
+      stopTyping();
+    }
+  };
+
+  const handleSelectConversation = (conv) => {
+    dispatch(setCurrentConversation(conv));
+  };
+
+  if (isLoading) return <LoadingSpinner />;
+
+  const currentMessages = messages[currentConversation?.id] || [];
 
   return (
-    <WorkerLayout title="الرئيسية">
-      <div className="welcome-section">
-        <div>
-          <h1 className="welcome-section__title">مرحباً بعودتك, {user?.first_name} 👋</h1>
-          <p className="welcome-section__subtitle">هذه نظرة عامة على نشاطك وأرباحك</p>
-        </div>
-        <Link to="/worker/services/new"><button className="btn btn--gold">➕ إضافة خدمة جديدة</button></Link>
-      </div>
-
-      <div className="stats-grid">
-        <StatCard title="إجمالي الأرباح" value={stats.totalEarnings} icon={DollarSign} color="gold" trend={15} />
-        <StatCard title="الخدمات المنشورة" value={stats.totalServices} icon={ShoppingBag} color="navy" />
-        <StatCard title="الطلبات المكتملة" value={stats.completedOrders} icon={Package} color="green" />
-        <StatCard title="التقييم" value={`${stats.rating} ★`} icon={Star} color="yellow" />
-      </div>
-
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-title">الطلبات الأخيرة <Link to="/worker/orders" className="card-link">عرض الكل →</Link></div>
-          {dashboard?.recentOrders?.length === 0 ? (
-            <div className="empty-state"><Package size={48} /><p>لا توجد طلبات بعد</p></div>
-          ) : (
-            dashboard?.recentOrders?.slice(0, 5).map(order => (
-              <div key={order.id} className="order-item">
-                <div className="order-item__client">{order.client_name}</div>
-                <div className="order-item__service">{order.service_name}</div>
-                <div className="order-item__price">{order.price} درهم</div>
-                <span className={`badge badge--${order.status}`}>{order.status === 'pending' ? 'معلق' : order.status === 'completed' ? 'مكتمل' : 'قيد التنفيذ'}</span>
+    <WorkerLayout title="الرسائل">
+      <div className="msg-layout">
+        {/* Sidebar - Conversations List */}
+        <div className="msg-sidebar">
+          <div className="msg-sidebar__search">
+            <span>🔍</span>
+            <input type="text" placeholder="بحث عن محادثة..." />
+          </div>
+          <div className="msg-list">
+            {conversations.length === 0 ? (
+              <div className="empty-state">
+                <div style={{ fontSize: 48 }}>💬</div>
+                <p>لا توجد محادثات بعد</p>
               </div>
-            ))
+            ) : (
+              conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`msg-conv ${currentConversation?.id === conv.id ? 'active' : ''}`}
+                  onClick={() => handleSelectConversation(conv)}
+                >
+                  <div className="msg-conv__av">
+                    {conv.participant?.name?.[0] || '?'}
+                    {conv.participant?.online && <span className="msg-conv__online" />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <div className="msg-conv__name">{conv.participant?.name}</div>
+                      <div className="msg-conv__time">
+                        {conv.last_message_at ? new Date(conv.last_message_at).toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
+                    </div>
+                    <div className="msg-conv__last">{conv.last_message || 'بدء محادثة'}</div>
+                  </div>
+                  {conv.unread_count > 0 && (
+                    <div className="msg-conv__badge">{conv.unread_count}</div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Main Chat Area */}
+        <div className="msg-main">
+          {currentConversation ? (
+            <>
+              <div className="msg-topbar">
+                <div className="msg-conv__av">
+                  {currentConversation.participant?.name?.[0] || '?'}
+                  {currentConversation.participant?.online && <span className="msg-conv__online" />}
+                </div>
+                <div>
+                  <div className="msg-conv__name">
+                    {currentConversation.participant?.name}
+                  </div>
+                  <div className="msg-conv__online-status">
+                    {currentConversation.participant?.online ? '● متصل' : '○ غير متصل'}
+                  </div>
+                </div>
+                <div style={{ marginRight: 'auto', display: 'flex', gap: 8 }}>
+                  <button className="btn btn--ghost btn--sm"><Phone size={14} /></button>
+                  <button className="btn btn--ghost btn--sm"><Video size={14} /></button>
+                </div>
+              </div>
+
+              <div className="msg-body">
+                {currentMessages.length === 0 ? (
+                  <div className="empty-state">
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
+                    <p>لا توجد رسائل بعد</p>
+                    <small>كن أول من يرسل رسالة</small>
+                  </div>
+                ) : (
+                  currentMessages.map((msg, idx) => {
+                    const isMe = msg.sender_id !== currentConversation.participant?.id;
+                    return (
+                      <div
+                        key={idx}
+                        className={`msg-bubble msg-bubble--${isMe ? 'me' : 'them'}`}
+                      >
+                        <div className={`msg-text msg-text--${isMe ? 'me' : 'them'}`}>
+                          {msg.message}
+                        </div>
+                        <div className={`msg-time msg-time--${isMe ? 'me' : ''}`}>
+                          {new Date(msg.created_at).toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' })}
+                          {isMe && msg.is_read && <span className="msg-read"> ✓✓</span>}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="msg-input">
+                <textarea
+                  className="msg-field"
+                  placeholder="اكتب رسالتك..."
+                  value={newMessage}
+                  onChange={handleTyping}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                  rows={1}
+                />
+                <button
+                  className="msg-send"
+                  onClick={handleSend}
+                  disabled={sending || !newMessage.trim()}
+                >
+                  {sending ? '⏳' : <Send size={18} />}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state" style={{ height: '100%', justifyContent: 'center', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 48 }}>💬</div>
+              <h3>اختر محادثة للبدء</h3>
+            </div>
           )}
         </div>
-
-        <div className="card">
-          <div className="card-title">جدول المواعيد <Link to="/worker/schedule" className="card-link">عرض الكل →</Link></div>
-          {dashboard?.upcomingAppointments?.length === 0 ? (
-            <div className="empty-state"><Calendar size={48} /><p>لا توجد مواعيد قادمة</p></div>
-          ) : (
-            dashboard?.upcomingAppointments?.slice(0, 5).map(app => (
-              <div key={app.id} className="appointment-item">
-                <div><div className="appointment-item__client">{app.client_name}</div><div className="appointment-item__time">{app.date} • {app.time}</div></div>
-                <Link to={`/worker/messages?client=${app.client_id}`}><button className="btn btn--ghost btn--sm"><MessageCircle size={14} /></button></Link>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="tips-card">
-        <div className="tips-card__icon">💡</div>
-        <div><div className="tips-card__title">نصائح لزيادة أرباحك</div><div className="tips-card__desc">تفاعل بسرعة مع طلبات العملاء لتحصل على تقييمات إيجابية</div></div>
-        <Link to="/worker/profile"><button className="btn btn--outline btn--sm">تطوير حسابي →</button></Link>
       </div>
     </WorkerLayout>
   );

@@ -1,3 +1,4 @@
+// components/worker/WorkerOrders.jsx
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
@@ -7,10 +8,10 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import Badge from '../common/Badge';
 import Modal from '../common/Modal';
 import { 
-  getWorkerRequests, 
-  acceptClientRequest,  // 🔥 تغيير من acceptRequest إلى acceptClientRequest
-  rejectClientRequest,  // 🔥 تغيير من rejectRequest إلى rejectClientRequest
-  submitOfferOnRequest  // 🔥 تغيير من submitOffer إلى submitOfferOnRequest
+  getAvailableRequests,        // ✅ اسم صحيح
+  acceptClientRequest, 
+  rejectClientRequest, 
+  submitOfferOnRequest 
 } from '../../features/worker/workerSlice';
 import { toast } from 'react-hot-toast';
 import '../../styles/Dashboard.css';
@@ -29,17 +30,16 @@ export default function WorkerOrders() {
   });
 
   useEffect(() => {
-    dispatch(getWorkerRequests());
+    dispatch(getAvailableRequests());  // ✅ استعمل getAvailableRequests
   }, [dispatch]);
 
   const requestsArray = Array.isArray(requests) ? requests : (requests?.data || []);
   
-  // 🔥 تغيير الدوال
   const handleAcceptRequest = async (id) => {
     try {
       await dispatch(acceptClientRequest(id)).unwrap();
       toast.success('تم قبول الطلب');
-      dispatch(getWorkerRequests());
+      dispatch(getAvailableRequests());
     } catch (error) {
       toast.error(error || 'حدث خطأ');
     }
@@ -50,7 +50,7 @@ export default function WorkerOrders() {
       try {
         await dispatch(rejectClientRequest(id)).unwrap();
         toast.success('تم رفض الطلب');
-        dispatch(getWorkerRequests());
+        dispatch(getAvailableRequests());
       } catch (error) {
         toast.error(error || 'حدث خطأ');
       }
@@ -74,7 +74,7 @@ export default function WorkerOrders() {
       toast.success('تم إرسال العرض بنجاح');
       setOfferModalOpen(false);
       setOfferData({ price: '', duration: '', message: '' });
-      dispatch(getWorkerRequests());
+      dispatch(getAvailableRequests());
     } catch (error) {
       toast.error(error || 'حدث خطأ');
     }
@@ -239,7 +239,6 @@ export default function WorkerOrders() {
             className="form-input"
             value={offerData.price}
             onChange={(e) => setOfferData({ ...offerData, price: e.target.value })}
-            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #ddd' }}
           />
           <input 
             type="text" 
@@ -247,7 +246,6 @@ export default function WorkerOrders() {
             className="form-input"
             value={offerData.duration}
             onChange={(e) => setOfferData({ ...offerData, duration: e.target.value })}
-            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #ddd' }}
           />
           <textarea 
             placeholder="رسالة للعميل (اختياري)"
@@ -255,7 +253,6 @@ export default function WorkerOrders() {
             rows="3"
             value={offerData.message}
             onChange={(e) => setOfferData({ ...offerData, message: e.target.value })}
-            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #ddd', resize: 'vertical' }}
           />
         </div>
       </Modal>

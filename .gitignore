@@ -27,3 +27,6 @@ composer.log
 # OS
 .DS_Store
 Thumbs.db
+backend/storage/framework/cache/*
+backend/storage/logs/*
+backend/bootstrap/cache/*

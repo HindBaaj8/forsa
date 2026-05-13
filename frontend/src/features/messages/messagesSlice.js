@@ -1,3 +1,4 @@
+// src/features/messages/messagesSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
@@ -20,7 +21,6 @@ export const getMessages = createAsyncThunk(
   async (conversationId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/conversations/${conversationId}/messages`);
-      // ✅ Normalisation des données
       const data = response.data?.data || response.data;
       return { conversationId, messages: Array.isArray(data) ? data : [] };
     } catch (error) {
@@ -61,65 +61,53 @@ export const markAsRead = createAsyncThunk(
 const initialState = {
   conversations: [],
   currentConversation: null,
-  messages: {},      // { conversationId: [...] }
+  messages: {},
   isLoading: false,
   error: null,
-  typingUsers: {},   // { conversationId: [userIds] }
+  typingUsers: {},
 };
 
 // ========== SLICE ==========
-const messageSlice = createSlice({
+const messagesSlice = createSlice({
   name: 'messages',
   initialState,
   reducers: {
     setCurrentConversation: (state, action) => {
       state.currentConversation = action.payload;
     },
-    
     clearError: (state) => {
       state.error = null;
     },
-    
     receiveMessage: (state, action) => {
       const { conversationId, message } = action.payload;
-      
       if (!state.messages[conversationId]) {
         state.messages[conversationId] = [];
       }
-      
-      // ✅ Vérifier doublon
       const exists = state.messages[conversationId].some(m => m.id === message.id);
       if (!exists) {
         state.messages[conversationId].push(message);
       }
     },
-    
     addTypingUser: (state, action) => {
       const { conversationId, userId, userName } = action.payload;
-      
       if (!state.typingUsers[conversationId]) {
         state.typingUsers[conversationId] = [];
       }
-      
       const exists = state.typingUsers[conversationId].some(u => u.userId === userId);
       if (!exists) {
         state.typingUsers[conversationId].push({ userId, userName });
       }
     },
-    
     removeTypingUser: (state, action) => {
       const { conversationId, userId } = action.payload;
-      
       if (state.typingUsers[conversationId]) {
         state.typingUsers[conversationId] = state.typingUsers[conversationId].filter(
           u => u.userId !== userId
         );
       }
     },
-    
     markAsReadRealtime: (state, action) => {
       const { conversationId, messageId, userId, readAt } = action.payload;
-      
       if (state.messages[conversationId]) {
         state.messages[conversationId] = state.messages[conversationId].map(msg =>
           msg.id === messageId
@@ -129,10 +117,8 @@ const messageSlice = createSlice({
       }
     },
   },
-  
   extraReducers: (builder) => {
     builder
-      // ===== GET CONVERSATIONS =====
       .addCase(getConversations.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -145,8 +131,6 @@ const messageSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
-      // ===== GET MESSAGES =====
       .addCase(getMessages.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -154,7 +138,6 @@ const messageSlice = createSlice({
       .addCase(getMessages.fulfilled, (state, action) => {
         state.isLoading = false;
         const { conversationId, messages } = action.payload;
-        // ✅ Initialisation correcte
         if (!state.messages[conversationId]) {
           state.messages[conversationId] = [];
         }
@@ -164,14 +147,11 @@ const messageSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
-      // ===== SEND MESSAGE =====
       .addCase(sendMessage.pending, (state) => {
         state.error = null;
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         const { conversationId, message } = action.payload;
-        // ✅ Vérification avant push
         if (!state.messages[conversationId]) {
           state.messages[conversationId] = [];
         }
@@ -180,8 +160,6 @@ const messageSlice = createSlice({
       .addCase(sendMessage.rejected, (state, action) => {
         state.error = action.payload;
       })
-      
-      // ===== MARK AS READ =====
       .addCase(markAsRead.pending, (state) => {
         state.error = null;
       })
@@ -200,7 +178,6 @@ const messageSlice = createSlice({
   },
 });
 
-// ========== EXPORTS ==========
 export const {
   setCurrentConversation,
   clearError,
@@ -208,6 +185,6 @@ export const {
   addTypingUser,
   removeTypingUser,
   markAsReadRealtime,
-} = messageSlice.actions;
+} = messagesSlice.actions;
 
-export default messageSlice.reducer;
+export default messagesSlice.reducer;

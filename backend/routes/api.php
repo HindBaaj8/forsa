@@ -120,6 +120,7 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
 */
 Route::middleware('auth:sanctum')->prefix('conversations')->group(function () {
     Route::get('/', [ConversationController::class, 'index']);
+    Route::post('/', [ConversationController::class, 'store']);
     Route::get('/{conversation}', [ConversationController::class, 'show']);
     Route::get('/by-order/{order}', [ConversationController::class, 'getByOrder']);
     Route::get('/{conversation}/messages', [MessageController::class, 'index']);

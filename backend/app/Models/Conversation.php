@@ -18,6 +18,7 @@ class Conversation extends Model
 
     protected $casts = [
         'last_message_at' => 'datetime',
+        'order_id' => 'integer',
     ];
 
     public function client()

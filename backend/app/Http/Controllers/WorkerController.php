@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use App\Models\Service;
 use App\Models\ServiceRequest;
 use App\Models\Interest;
 use App\Models\User;
@@ -59,19 +59,19 @@ class WorkerController extends Controller
     /**
      * جلب خدمات المهني
      */
-    public function services()
+    public function services(Request $request)
     {
         try {
-            $user = Auth::user();
-            $services = $user->services()->with('category')->latest()->get();
-            
+            $services = Service::where('worker_id', auth()->id())
+                ->with('category')
+                ->latest()
+                ->paginate(10);
+
             return response()->json([
                 'success' => true,
                 'data' => $services
             ]);
-            
         } catch (\Exception $e) {
-            Log::error('Services error: ' . $e->getMessage());
             return response()->json(['message' => 'Server error'], 500);
         }
     }
