@@ -6,11 +6,10 @@ import { selectIsAuthenticated, selectUserRole } from './features/auth/authSelec
 // ✅ استدعاء جميع الـ CSS هنا
 import './styles/global.css';
 import './styles/variables.css';
-import './styles/Admin.css';
-import './styles/Client.css';
-import './styles/Worker.css';
+import './styles/Dashboard.css';
 import './styles/Auth.css';
 import './styles/Navbar.css';
+
 
 // Pages
 import Home from './pages/Home';

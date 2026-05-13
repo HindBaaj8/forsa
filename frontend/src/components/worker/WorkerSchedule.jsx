@@ -6,7 +6,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import Badge from '../common/Badge';
 import { getWorkerSchedule, updateScheduleStatus } from '../../features/worker/workerSlice';
 import { toast } from 'react-hot-toast';
-import '../../styles/Worker.css';
+import '../../styles/Dashboard.css';
 
 export default function WorkerSchedule() {
   const dispatch = useDispatch();

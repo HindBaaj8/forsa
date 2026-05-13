@@ -9,7 +9,7 @@ import Button from '../common/Button';
 import { updateProfile, updateNotifications } from '../../features/client/clientSlice';
 import { logout } from '../../features/auth/authSlice';
 import { toast } from 'react-hot-toast';
-import '../../styles/Client.css'; // فقط إذا styles داخل components
+import '../../styles/Dashboard.css';// فقط إذا styles داخل components
 export default function ClientSettings() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);

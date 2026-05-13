@@ -3,12 +3,26 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Send, Phone, Video } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
-import { getConversations, getMessages, sendMessage, markAsRead } from '../../features/messages/messagesSlice';
-import '../../styles/Worker.css';
+import { 
+  getConversations, 
+  getMessages, 
+  sendMessage, 
+  markAsRead,
+  setCurrentConversation 
+} from '../../features/messages/messagesSlice';
+import '../../styles/Dashboard.css';
 
 export default function WorkerMessages() {
   const dispatch = useDispatch();
-  const { conversations, currentConversation, messages, isLoading } = useSelector((state) => state.messages);
+  
+  // ✅ Safe destructuring avec valeurs par défaut
+  const {
+    conversations = [],
+    currentConversation = null,
+    messages = {},
+    isLoading = false,
+  } = useSelector((state) => state.messages || {});
+  
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
@@ -26,62 +40,145 @@ export default function WorkerMessages() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, currentConversation]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || !currentConversation || sending) return;
     setSending(true);
-    await dispatch(sendMessage({ conversationId: currentConversation.id, message: newMessage }));
+    await dispatch(sendMessage({ 
+      conversationId: currentConversation.id, 
+      message: newMessage.trim() 
+    }));
     setNewMessage('');
     setSending(false);
   };
 
+  const handleSelectConversation = (conv) => {
+    // ✅ Utiliser l'action creator au lieu du dispatch direct
+    dispatch(setCurrentConversation(conv));
+  };
+
   if (isLoading) return <LoadingSpinner />;
+
+  // ✅ Récupérer les messages de la conversation courante
+  const currentMessages = messages[currentConversation?.id] || [];
 
   return (
     <WorkerLayout title="الرسائل">
       <div className="msg-layout">
+        {/* Sidebar - Conversations List */}
         <div className="msg-sidebar">
-          <div className="msg-sidebar__search"><span>🔍</span><input type="text" placeholder="بحث عن محادثة..." /></div>
+          <div className="msg-sidebar__search">
+            <span>🔍</span>
+            <input type="text" placeholder="بحث عن محادثة..." />
+          </div>
           <div className="msg-list">
-            {conversations?.length === 0 ? (
-              <div className="empty-state"><div style={{ fontSize: 48 }}>💬</div><p>لا توجد محادثات بعد</p></div>
+            {conversations.length === 0 ? (
+              <div className="empty-state">
+                <div style={{ fontSize: 48 }}>💬</div>
+                <p>لا توجد محادثات بعد</p>
+              </div>
             ) : (
-              conversations?.map(conv => (
-                <div key={conv.id} className={`msg-conv ${currentConversation?.id === conv.id ? 'active' : ''}`} onClick={() => dispatch({ type: 'messages/setCurrentConversation', payload: conv })}>
-                  <div className="msg-conv__av">{conv.participant?.name?.[0] || '?'}</div>
-                  <div><div className="msg-conv__name">{conv.participant?.name}</div><div className="msg-conv__last">{conv.last_message || 'بدء محادثة'}</div></div>
-                  {conv.unread_count > 0 && <div className="msg-conv__badge">{conv.unread_count}</div>}
+              conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`msg-conv ${currentConversation?.id === conv.id ? 'active' : ''}`}
+                  onClick={() => handleSelectConversation(conv)}
+                >
+                  <div className="msg-conv__av">
+                    {conv.participant?.name?.[0] || '?'}
+                  </div>
+                  <div>
+                    <div className="msg-conv__name">{conv.participant?.name}</div>
+                    <div className="msg-conv__last">{conv.last_message || 'بدء محادثة'}</div>
+                  </div>
+                  {conv.unread_count > 0 && (
+                    <div className="msg-conv__badge">{conv.unread_count}</div>
+                  )}
                 </div>
               ))
             )}
           </div>
         </div>
 
+        {/* Main Chat Area */}
         <div className="msg-main">
           {currentConversation ? (
             <>
               <div className="msg-topbar">
-                <div className="msg-conv__av">{currentConversation.participant?.name?.[0] || '?'}</div>
-                <div><div className="msg-conv__name">{currentConversation.participant?.name}</div><div className="msg-conv__online">● متصل</div></div>
-                <div style={{ marginRight: 'auto', display: 'flex', gap: 8 }}><button className="btn btn--ghost btn--sm"><Phone size={14} /></button><button className="btn btn--ghost btn--sm"><Video size={14} /></button></div>
-              </div>
-              <div className="msg-body">
-                {messages[currentConversation.id]?.map((msg, i) => (
-                  <div key={i} className={`msg-bubble msg-bubble--${msg.is_me ? 'me' : 'them'}`}>
-                    <div className={`msg-text msg-text--${msg.is_me ? 'me' : 'them'}`}>{msg.body}</div>
-                    <div className={`msg-time msg-time--${msg.is_me ? 'me' : ''}`}>{new Date(msg.created_at).toLocaleTimeString('ar-MA', { hour: '2-digit', minute: '2-digit' })}</div>
+                <div className="msg-conv__av">
+                  {currentConversation.participant?.name?.[0] || '?'}
+                </div>
+                <div>
+                  <div className="msg-conv__name">
+                    {currentConversation.participant?.name}
                   </div>
-                ))}
+                  <div className="msg-conv__online">● متصل</div>
+                </div>
+                <div style={{ marginRight: 'auto', display: 'flex', gap: 8 }}>
+                  <button className="btn btn--ghost btn--sm">
+                    <Phone size={14} />
+                  </button>
+                  <button className="btn btn--ghost btn--sm">
+                    <Video size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="msg-body">
+                {currentMessages.length === 0 ? (
+                  <div className="empty-state">
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
+                    <p>لا توجد رسائل بعد</p>
+                    <small>كن أول من يرسل رسالة</small>
+                  </div>
+                ) : (
+                  currentMessages.map((msg, idx) => {
+                    const isMe = msg.sender_id !== currentConversation.participant?.id;
+                    return (
+                      <div
+                        key={idx}
+                        className={`msg-bubble msg-bubble--${isMe ? 'me' : 'them'}`}
+                      >
+                        <div className={`msg-text msg-text--${isMe ? 'me' : 'them'}`}>
+                          {msg.message || msg.body}
+                        </div>
+                        <div className={`msg-time msg-time--${isMe ? 'me' : ''}`}>
+                          {new Date(msg.created_at).toLocaleTimeString('ar-MA', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
                 <div ref={messagesEndRef} />
               </div>
+
               <div className="msg-input">
-                <textarea className="msg-field" placeholder="اكتب رسالتك..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()} />
-                <button className="msg-send" onClick={handleSend} disabled={sending || !newMessage.trim()}><Send size={18} /></button>
+                <textarea
+                  className="msg-field"
+                  placeholder="اكتب رسالتك..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                  rows={1}
+                />
+                <button
+                  className="msg-send"
+                  onClick={handleSend}
+                  disabled={sending || !newMessage.trim()}
+                >
+                  {sending ? '⏳' : <Send size={18} />}
+                </button>
               </div>
             </>
           ) : (
-            <div className="empty-state" style={{ height: '100%', justifyContent: 'center', display: 'flex', flexDirection: 'column' }}><div style={{ fontSize: 48 }}>💬</div><h3>اختر محادثة للبدء</h3></div>
+            <div className="empty-state" style={{ height: '100%', justifyContent: 'center', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 48 }}>💬</div>
+              <h3>اختر محادثة للبدء</h3>
+            </div>
           )}
         </div>
       </div>

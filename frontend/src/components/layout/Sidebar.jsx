@@ -17,7 +17,10 @@ import {
   Package,
   BarChart3,
   Tags,
-  Bell
+  Bell,
+  Home,
+  Star,
+  CreditCard
 } from 'lucide-react';
 import { logout } from '../../features/auth/authSlice';
 import { selectUser } from '../../features/auth/authSelectors';
@@ -66,9 +69,12 @@ export default function Sidebar({ role, onClose }) {
     if (onClose) onClose();
   };
 
+  // ✅ تحسين عرض الحروف الأولى
   const getInitials = () => {
     if (!user) return 'م';
-    return `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'م';
+    const firstInitial = user.first_name?.[0] || '';
+    const lastInitial = user.last_name?.[0] || '';
+    return (firstInitial + lastInitial).toUpperCase() || 'م';
   };
 
   const getRoleName = () => {
@@ -77,16 +83,26 @@ export default function Sidebar({ role, onClose }) {
     return 'مدير';
   };
 
+  // ✅ الحصول على الصورة الرمزية
+  const getAvatar = () => {
+    if (user?.avatar) {
+      return user.avatar;
+    }
+    return null;
+  };
+
   return (
     <div className="sidebar">
+      {/* Brand Section */}
       <div className="sidebar__brand" onClick={() => { navigate('/'); if (onClose) onClose(); }}>
         <div className="sidebar__brand-icon">🔍</div>
         <div>
-          <div className="sidebar__brand-name">فرصة عمل</div>
+          <div className="sidebar__brand-name">فرصة <span className="brand-gold">عمل</span></div>
           <div className="sidebar__brand-sub">لتقديم الخدمات</div>
         </div>
       </div>
 
+      {/* Navigation Section */}
       <div className="sidebar__nav">
         <div className="sidebar__label">القائمة الرئيسية</div>
         {menus.map(item => {
@@ -105,20 +121,66 @@ export default function Sidebar({ role, onClose }) {
         })}
       </div>
 
+      {/* User Section */}
       <div className="sidebar__user">
-        <div className="sidebar__avatar">{getInitials()}</div>
+        <div className="sidebar__avatar">
+          {getAvatar() ? (
+            <img src={getAvatar()} alt="Avatar" className="sidebar__avatar-img" />
+          ) : (
+            getInitials()
+          )}
+        </div>
         <div>
-          <div className="sidebar__user-name">{user?.first_name} {user?.last_name}</div>
+          <div className="sidebar__user-name">
+            {user?.first_name} {user?.last_name}
+          </div>
           <div className="sidebar__user-role">{getRoleName()}</div>
         </div>
       </div>
 
       <div className="sidebar__divider" />
       
+      {/* Logout Button */}
       <button className="sidebar__item" onClick={handleLogout}>
         <LogOut size={18} className="sidebar__item-icon" />
         <span>تسجيل الخروج</span>
       </button>
+
+      <style>{`
+        .brand-gold {
+          color: var(--g500);
+        }
+        
+        .sidebar__avatar-img {
+          width: 100%;
+          height: 100%;
+          border-radius: 14px;
+          object-fit: cover;
+        }
+        
+        .sidebar__user-name {
+          font-size: 14px;
+          font-weight: 800;
+          color: #fff;
+          margin-bottom: 4px;
+        }
+        
+        .sidebar__user-role {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        @media (max-width: 768px) {
+          .sidebar {
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+          }
+          
+          .sidebar.open {
+            transform: translateX(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

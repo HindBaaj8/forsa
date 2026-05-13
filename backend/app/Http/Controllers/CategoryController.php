@@ -9,37 +9,38 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        return Category::where('is_active', true)->get();
+        $categories = Category::where('is_active', true)->get();
+        return response()->json($categories);
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => ['required'],
-            'slug' => ['required','unique:categories'],
-            'icon' => ['nullable']
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'slug' => 'required|string|unique:categories',
+            'icon' => 'nullable|string',
         ]);
 
-        return Category::create($data);
+        $category = Category::create($validated);
+        return response()->json($category, 201);
     }
 
     public function update(Request $request, Category $category)
     {
-        $data = $request->validate([
-            'name' => ['sometimes'],
-            'slug' => ['sometimes','unique:categories,slug,'.$category->id],
-            'icon' => ['nullable'],
-            'is_active' => ['boolean']
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'slug' => 'sometimes|string|unique:categories,slug,' . $category->id,
+            'icon' => 'nullable|string',
+            'is_active' => 'sometimes|boolean',
         ]);
 
-        $category->update($data);
-
-        return $category;
+        $category->update($validated);
+        return response()->json($category);
     }
 
     public function destroy(Category $category)
     {
         $category->delete();
-        return response()->json(['message' => 'deleted']);
+        return response()->json(['message' => 'Category deleted']);
     }
 }

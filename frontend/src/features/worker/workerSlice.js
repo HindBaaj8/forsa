@@ -1,9 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { updateUser } from '../auth/authSlice';
 
-// ═══════════════════════════════════════════════════════════
-// DASHBOARD
-// ═══════════════════════════════════════════════════════════
 export const getWorkerDashboard = createAsyncThunk(
   'worker/dashboard',
   async (_, { rejectWithValue }) => {
@@ -16,15 +14,13 @@ export const getWorkerDashboard = createAsyncThunk(
   }
 );
 
-// ═══════════════════════════════════════════════════════════
-// SERVICES
-// ═══════════════════════════════════════════════════════════
 export const getWorkerServices = createAsyncThunk(
   'worker/getServices',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/worker/services');
-      return response.data;
+      const servicesData = response.data?.data || response.data || [];
+      return servicesData;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to load services');
     }
@@ -38,7 +34,8 @@ export const createService = createAsyncThunk(
       const response = await api.post('/services', serviceData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create service');
+      const message = error.response?.data?.message || error.response?.data?.errors || 'Failed to create service';
+      return rejectWithValue(message);
     }
   }
 );
@@ -79,9 +76,6 @@ export const toggleService = createAsyncThunk(
   }
 );
 
-// ═══════════════════════════════════════════════════════════
-// ORDERS
-// ═══════════════════════════════════════════════════════════
 export const getWorkerOrders = createAsyncThunk(
   'worker/getOrders',
   async (_, { rejectWithValue }) => {
@@ -154,9 +148,6 @@ export const cancelOrder = createAsyncThunk(
   }
 );
 
-// ═══════════════════════════════════════════════════════════
-// EARNINGS
-// ═══════════════════════════════════════════════════════════
 export const getWorkerEarnings = createAsyncThunk(
   'worker/getEarnings',
   async (_, { rejectWithValue }) => {
@@ -169,9 +160,6 @@ export const getWorkerEarnings = createAsyncThunk(
   }
 );
 
-// ═══════════════════════════════════════════════════════════
-// SCHEDULE
-// ═══════════════════════════════════════════════════════════
 export const getWorkerSchedule = createAsyncThunk(
   'worker/getSchedule',
   async ({ date, view } = {}, { rejectWithValue }) => {
@@ -196,21 +184,6 @@ export const updateScheduleStatus = createAsyncThunk(
   }
 );
 
-// ═══════════════════════════════════════════════════════════
-// PROFILE
-// ═══════════════════════════════════════════════════════════
-export const updateWorkerProfile = createAsyncThunk(
-  'worker/updateProfile',
-  async (profileData, { rejectWithValue }) => {
-    try {
-      const response = await api.put('/worker/profile', profileData);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
-    }
-  }
-);
-
 export const updateWorkerNotifications = createAsyncThunk(
   'worker/updateNotifications',
   async (notifications, { rejectWithValue }) => {
@@ -223,203 +196,81 @@ export const updateWorkerNotifications = createAsyncThunk(
   }
 );
 
-// ═══════════════════════════════════════════════════════════
-// INITIAL STATE
-// ═══════════════════════════════════════════════════════════
+export const updateWorkerProfile = createAsyncThunk(
+  'worker/updateProfile',
+  async (profileData, { dispatch, rejectWithValue }) => {
+    try {
+      let config = { headers: { 'Accept': 'application/json' } };
+      const isFormData = profileData instanceof FormData;
+      if (isFormData) {
+        config.headers['Content-Type'] = 'multipart/form-data';
+      } else {
+        config.headers['Content-Type'] = 'application/json';
+      }
+      const response = await api.put('/worker/profile', profileData, config);
+      const updatedUser = response.data.data || response.data;
+      if (updatedUser && dispatch) {
+        dispatch(updateUser(updatedUser));
+      }
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const newUser = { ...currentUser, ...updatedUser };
+      localStorage.setItem('user', JSON.stringify(newUser));
+      return response.data;
+    } catch (error) {
+      const errors = error.response?.data?.errors;
+      const message = errors ? Object.values(errors).flat()[0] : error.response?.data?.message || 'Failed to update profile';
+      return rejectWithValue(message);
+    }
+  }
+);
+
 const initialState = {
-  dashboard: {
-    stats: {
-      totalEarnings: 0,
-      totalServices: 0,
-      completedOrders: 0,
-      rating: 0,
-    },
-    recentOrders: [],
-    upcomingAppointments: [],
-  },
+  dashboard: { stats: { totalEarnings: 0, totalServices: 0, completedOrders: 0, rating: 0 }, recentOrders: [], upcomingAppointments: [] },
   services: [],
   orders: [],
-  earnings: {
-    stats: {
-      totalEarnings: 0,
-      monthlyEarnings: 0,
-      completedOrders: 0,
-      pendingAmount: 0,
-    },
-    transactions: [],
-  },
-  schedule: {
-    appointments: [],
-  },
+  earnings: { stats: { totalEarnings: 0, monthlyEarnings: 0, completedOrders: 0, pendingAmount: 0 }, transactions: [] },
+  schedule: { appointments: [] },
   profile: null,
-  notifications: {
-    new_orders: true,
-    messages: true,
-    newsletter: false,
-  },
+  notifications: { new_orders: true, messages: true, newsletter: false },
   isLoading: false,
   error: null,
 };
 
-// ═══════════════════════════════════════════════════════════
-// SLICE
-// ═══════════════════════════════════════════════════════════
 const workerSlice = createSlice({
   name: 'worker',
   initialState,
   reducers: {
-    clearError: (state) => {
-      state.error = null;
-    },
-    clearServices: (state) => {
-      state.services = [];
-    },
-    clearOrders: (state) => {
-      state.orders = [];
-    },
+    clearError: (state) => { state.error = null; },
+    clearServices: (state) => { state.services = []; },
+    clearOrders: (state) => { state.orders = []; },
   },
   extraReducers: (builder) => {
     builder
-      // ═══════════════════════════════════════
-      // DASHBOARD
-      // ═══════════════════════════════════════
-      .addCase(getWorkerDashboard.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(getWorkerDashboard.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.dashboard = action.payload || initialState.dashboard;
-      })
-      .addCase(getWorkerDashboard.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-
-      // ═══════════════════════════════════════
-      // SERVICES
-      // ═══════════════════════════════════════
-      .addCase(getWorkerServices.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(getWorkerServices.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.services = action.payload?.data || action.payload || [];
-      })
-      .addCase(getWorkerServices.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-      .addCase(createService.fulfilled, (state, action) => {
-        state.services.unshift(action.payload);
-      })
-      .addCase(updateService.fulfilled, (state, action) => {
-        const index = state.services.findIndex(s => s.id === action.payload.id);
-        if (index !== -1) {
-          state.services[index] = action.payload;
-        }
-      })
-      .addCase(deleteService.fulfilled, (state, action) => {
-        state.services = state.services.filter(s => s.id !== action.payload);
-      })
-      .addCase(toggleService.fulfilled, (state, action) => {
-        const index = state.services.findIndex(s => s.id === action.payload.id);
-        if (index !== -1) {
-          state.services[index] = action.payload;
-        }
-      })
-
-      // ═══════════════════════════════════════
-      // ORDERS
-      // ═══════════════════════════════════════
-      .addCase(getWorkerOrders.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(getWorkerOrders.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.orders = action.payload?.data || action.payload || [];
-      })
-      .addCase(getWorkerOrders.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-      .addCase(acceptOrder.fulfilled, (state, action) => {
-        const index = state.orders.findIndex(o => o.id === action.payload.id);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
-        }
-      })
-      .addCase(rejectOrder.fulfilled, (state, action) => {
-        state.orders = state.orders.filter(o => o.id !== action.payload.id);
-      })
-      .addCase(startOrder.fulfilled, (state, action) => {
-        const index = state.orders.findIndex(o => o.id === action.payload.id);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
-        }
-      })
-      .addCase(completeOrder.fulfilled, (state, action) => {
-        const index = state.orders.findIndex(o => o.id === action.payload.id);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
-        }
-      })
-      .addCase(cancelOrder.fulfilled, (state, action) => {
-        const index = state.orders.findIndex(o => o.id === action.payload.id);
-        if (index !== -1) {
-          state.orders[index] = action.payload;
-        }
-      })
-
-      // ═══════════════════════════════════════
-      // EARNINGS
-      // ═══════════════════════════════════════
-      .addCase(getWorkerEarnings.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(getWorkerEarnings.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.earnings = action.payload || initialState.earnings;
-      })
-      .addCase(getWorkerEarnings.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-
-      // ═══════════════════════════════════════
-      // SCHEDULE
-      // ═══════════════════════════════════════
-      .addCase(getWorkerSchedule.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(getWorkerSchedule.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.schedule = action.payload || initialState.schedule;
-      })
-      .addCase(getWorkerSchedule.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
-      .addCase(updateScheduleStatus.fulfilled, (state, action) => {
-        const index = state.schedule.appointments.findIndex(a => a.id === action.payload.id);
-        if (index !== -1) {
-          state.schedule.appointments[index] = action.payload;
-        }
-      })
-
-      // ═══════════════════════════════════════
-      // PROFILE & NOTIFICATIONS
-      // ═══════════════════════════════════════
-      .addCase(updateWorkerProfile.fulfilled, (state, action) => {
-        state.profile = action.payload;
-      })
-      .addCase(updateWorkerNotifications.fulfilled, (state, action) => {
-        state.notifications = action.payload || state.notifications;
-      });
+      .addCase(getWorkerDashboard.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(getWorkerDashboard.fulfilled, (state, action) => { state.isLoading = false; state.dashboard = action.payload || initialState.dashboard; })
+      .addCase(getWorkerDashboard.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+      .addCase(getWorkerServices.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(getWorkerServices.fulfilled, (state, action) => { state.isLoading = false; state.services = Array.isArray(action.payload) ? action.payload : []; })
+      .addCase(getWorkerServices.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+      .addCase(createService.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(createService.fulfilled, (state, action) => { state.isLoading = false; state.services.unshift(action.payload); })
+      .addCase(createService.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+      .addCase(updateService.fulfilled, (state, action) => { state.isLoading = false; const index = state.services.findIndex(s => s.id === action.payload.id); if (index !== -1) state.services[index] = action.payload; })
+      .addCase(deleteService.fulfilled, (state, action) => { state.services = state.services.filter(s => s.id !== action.payload); })
+      .addCase(toggleService.fulfilled, (state, action) => { const index = state.services.findIndex(s => s.id === action.payload.id); if (index !== -1) state.services[index] = action.payload; })
+      .addCase(getWorkerOrders.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(getWorkerOrders.fulfilled, (state, action) => { state.isLoading = false; state.orders = action.payload?.data || action.payload || []; })
+      .addCase(getWorkerOrders.rejected, (state, action) => { state.isLoading = false; state.error = action.payload; })
+      .addCase(acceptOrder.fulfilled, (state, action) => { const index = state.orders.findIndex(o => o.id === action.payload.id); if (index !== -1) state.orders[index] = action.payload; })
+      .addCase(rejectOrder.fulfilled, (state, action) => { state.orders = state.orders.filter(o => o.id !== action.payload.id); })
+      .addCase(startOrder.fulfilled, (state, action) => { const index = state.orders.findIndex(o => o.id === action.payload.id); if (index !== -1) state.orders[index] = action.payload; })
+      .addCase(completeOrder.fulfilled, (state, action) => { const index = state.orders.findIndex(o => o.id === action.payload.id); if (index !== -1) state.orders[index] = action.payload; })
+      .addCase(cancelOrder.fulfilled, (state, action) => { const index = state.orders.findIndex(o => o.id === action.payload.id); if (index !== -1) state.orders[index] = action.payload; })
+      .addCase(getWorkerEarnings.fulfilled, (state, action) => { state.earnings = action.payload || initialState.earnings; })
+      .addCase(getWorkerSchedule.fulfilled, (state, action) => { state.schedule = action.payload || initialState.schedule; })
+      .addCase(updateScheduleStatus.fulfilled, (state, action) => { const index = state.schedule.appointments.findIndex(a => a.id === action.payload.id); if (index !== -1) state.schedule.appointments[index] = action.payload; })
+      .addCase(updateWorkerProfile.fulfilled, (state, action) => { state.profile = action.payload; })
+      .addCase(updateWorkerNotifications.fulfilled, (state, action) => { state.notifications = action.payload || state.notifications; });
   },
 });
 

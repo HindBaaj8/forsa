@@ -55,6 +55,55 @@ export const getCurrentUser = createAsyncThunk(
   }
 );
 
+// ✅ Add updateProfile thunk
+export const updateProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { rejectWithValue }) => {
+    try {
+      let config = {
+        headers: { 'Accept': 'application/json' }
+      };
+      
+      if (profileData instanceof FormData) {
+        config.headers['Content-Type'] = 'multipart/form-data';
+      } else {
+        config.headers['Content-Type'] = 'application/json';
+      }
+      
+      const response = await api.post('/auth/me', profileData, config);
+      
+      // ✅ Update localStorage
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const updatedUser = response.data.data || response.data;
+      const newUser = { ...currentUser, ...updatedUser };
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
+      return response.data;
+    } catch (error) {
+      const errors = error.response?.data?.errors;
+      const message = errors ? Object.values(errors).flat()[0] : error.response?.data?.message;
+      return rejectWithValue(message || 'Failed to update profile');
+    }
+  }
+);
+
+// ✅ Add changePassword thunk
+export const changePassword = createAsyncThunk(
+  'auth/changePassword',
+  async ({ current_password, new_password, new_password_confirmation }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/change-password', {
+        current_password,
+        new_password,
+        new_password_confirmation
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to change password');
+    }
+  }
+);
+
 const initialState = {
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token') || null,
@@ -71,12 +120,20 @@ const authSlice = createSlice({
       state.error = null;
     },
     updateUser: (state, action) => {
+      // ✅ تحديث user فـ Redux state
       state.user = { ...state.user, ...action.payload };
+      // ✅ تحديث localStorage
       localStorage.setItem('user', JSON.stringify(state.user));
+    },
+    // ✅ تحديث من Redux فقط
+    setUser: (state, action) => {
+      state.user = action.payload;
+      localStorage.setItem('user', JSON.stringify(action.payload));
     },
   },
   extraReducers: (builder) => {
     builder
+      // Login
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -91,6 +148,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
+      // Register
       .addCase(register.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -105,16 +164,63 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
+      
+      // Logout
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
       })
+      
+      // Get Current User
+      .addCase(getCurrentUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
       .addCase(getCurrentUser.fulfilled, (state, action) => {
-        state.user = action.payload;
+        state.isLoading = false;
+        state.user = action.payload.data || action.payload;
+        // ✅ تحديث localStorage
+        if (state.user) {
+          localStorage.setItem('user', JSON.stringify(state.user));
+        }
+      })
+      .addCase(getCurrentUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Update Profile
+      .addCase(updateProfile.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const updatedUser = action.payload.data || action.payload;
+        state.user = { ...state.user, ...updatedUser };
+        // ✅ تحديث localStorage
+        localStorage.setItem('user', JSON.stringify(state.user));
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Change Password
+      .addCase(changePassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { clearError, updateUser } = authSlice.actions;
+export const { clearError, updateUser, setUser } = authSlice.actions;
 export default authSlice.reducer;

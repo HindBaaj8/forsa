@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
-import '../styles/Client.css'
 export const getNotifications = createAsyncThunk(
   'notifications/getAll',
   async (page = 1, { rejectWithValue }) => {

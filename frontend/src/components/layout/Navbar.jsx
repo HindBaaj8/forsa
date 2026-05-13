@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Menu, X, LogIn, UserPlus, Bell } from 'lucide-react';
 import { selectIsAuthenticated, selectUser } from '../../features/auth/authSelectors';
-
+import './styles/Dashboard.css';
 export default function Navbar() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);

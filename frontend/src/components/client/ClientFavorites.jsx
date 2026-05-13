@@ -6,7 +6,7 @@ import ClientLayout from '../layout/ClientLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getFavorites, removeFavorite } from '../../features/client/clientSlice';
 import { toast } from 'react-hot-toast';
-import '../../styles/Client.css'; // فقط إذا styles داخل components
+import '../../styles/Dashboard.css'; // فقط إذا styles داخل components
 export default function ClientFavorites() {
   const dispatch = useDispatch();
   const { favorites, isLoading } = useSelector((state) => state.client);

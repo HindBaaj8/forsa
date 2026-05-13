@@ -4,36 +4,73 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversation;
 use App\Models\Message;
+use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
-    public function store(Conversation $conversation)
+    public function index(Conversation $conversation)
     {
-        $this->authorizeConversation($conversation);
+        if (!in_array(auth()->id(), [$conversation->client_id, $conversation->worker_id])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $messages = $conversation->messages()
+            ->with('sender')
+            ->latest()
+            ->paginate(50);
+
+        return response()->json($messages);
+    }
+
+    public function store(Request $request, Conversation $conversation)
+    {
+        if (!in_array(auth()->id(), [$conversation->client_id, $conversation->worker_id])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'message' => 'required|string',
+            'type' => 'sometimes|in:text,image',
+        ]);
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'sender_id' => auth()->id(),
-            'message' => request('message'),
-            'type' => 'text'
+            'message' => $validated['message'],
+            'type' => $validated['type'] ?? 'text',
         ]);
 
         $conversation->update(['last_message_at' => now()]);
 
-        return $message;
+        return response()->json($message, 201);
     }
 
-    public function index(Conversation $conversation)
+    public function markAsRead(Message $message)
     {
-        $this->authorizeConversation($conversation);
+        $conversation = $message->conversation;
 
-        return $conversation->messages()->latest()->paginate(50);
+        if (!in_array(auth()->id(), [$conversation->client_id, $conversation->worker_id])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($message->sender_id !== auth()->id()) {
+            $message->markAsRead();
+        }
+
+        return response()->json(['message' => 'Message marked as read']);
     }
 
-    private function authorizeConversation($conversation)
+    public function markAllAsRead(Conversation $conversation)
     {
         if (!in_array(auth()->id(), [$conversation->client_id, $conversation->worker_id])) {
-            abort(403);
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        $conversation->messages()
+            ->where('sender_id', '!=', auth()->id())
+            ->where('is_read', false)
+            ->update(['is_read' => true, 'read_at' => now()]);
+
+        return response()->json(['message' => 'All messages marked as read']);
     }
 }

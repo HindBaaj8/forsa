@@ -2,20 +2,29 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-// Dashboard
+// Dashboard - ✅ تصحيح: استعمل /requests بدل /client/dashboard
 export const getClientDashboard = createAsyncThunk(
   'client/dashboard',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/client/dashboard');
-      return response.data;
+      const response = await api.get('/requests');
+      return {
+        stats: {
+          activeRequests: response.data?.data?.filter(r => r.status === 'pending').length || 0,
+          completedRequests: response.data?.data?.filter(r => r.status === 'completed').length || 0,
+          totalSpent: 0,
+          favorites: 0,
+        },
+        recentRequests: response.data?.data?.slice(0, 5) || [],
+        featuredServices: [],
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-// Requests
+// Requests - ✅ صحيح
 export const getClientRequests = createAsyncThunk(
   'client/getRequests',
   async (_, { rejectWithValue }) => {
@@ -28,6 +37,7 @@ export const getClientRequests = createAsyncThunk(
   }
 );
 
+// Create Request - ✅ صحيح
 export const createRequest = createAsyncThunk(
   'client/createRequest',
   async (requestData, { rejectWithValue }) => {
@@ -40,6 +50,7 @@ export const createRequest = createAsyncThunk(
   }
 );
 
+// Cancel Request - ✅ صحيح
 export const cancelRequest = createAsyncThunk(
   'client/cancelRequest',
   async (id, { rejectWithValue }) => {
@@ -52,6 +63,7 @@ export const cancelRequest = createAsyncThunk(
   }
 );
 
+// Delete Request - ✅ صحيح
 export const deleteRequest = createAsyncThunk(
   'client/deleteRequest',
   async (id, { rejectWithValue }) => {
@@ -64,12 +76,12 @@ export const deleteRequest = createAsyncThunk(
   }
 );
 
-// Profile
+// Update Profile - ⚠️ تصحيح: استعمل POST بدل PUT
 export const updateProfile = createAsyncThunk(
   'client/updateProfile',
   async (profileData, { rejectWithValue }) => {
     try {
-      const response = await api.put('/auth/me', profileData);
+      const response = await api.post('/auth/me', profileData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
@@ -77,19 +89,20 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
+// Update Notifications - ⚠️ مؤقتاً علق
 export const updateNotifications = createAsyncThunk(
   'client/updateNotifications',
   async (notifications, { rejectWithValue }) => {
     try {
-      const response = await api.put('/user/notifications', notifications);
-      return response.data;
+      // TODO: أضف route فـ Backend
+      return notifications;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-// Favorites
+// Favorites - ✅ صحيح (إذا عندك routes favorites فـ Backend)
 export const getFavorites = createAsyncThunk(
   'client/getFavorites',
   async (_, { rejectWithValue }) => {
@@ -114,12 +127,14 @@ export const removeFavorite = createAsyncThunk(
   }
 );
 
-// Search
+// Search Workers - ⚠️ تصحيح: استعمل /services
 export const searchWorkers = createAsyncThunk(
   'client/searchWorkers',
   async ({ query, category, city }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/workers/search', { query, category, city });
+      const response = await api.get('/services', { 
+        params: { search: query, category_id: category, city } 
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
@@ -127,24 +142,31 @@ export const searchWorkers = createAsyncThunk(
   }
 );
 
+// Get Filters - ⚠️ تصحيح: جلب من /categories
 export const getFilters = createAsyncThunk(
   'client/getFilters',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/workers/filters');
-      return response.data;
+      const [categoriesRes, servicesRes] = await Promise.all([
+        api.get('/categories'),
+        api.get('/services')
+      ]);
+      return {
+        categories: categoriesRes.data.map(c => c.name),
+        cities: [...new Set(servicesRes.data?.data?.map(s => s.location) || [])]
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-// Change Password
+// Change Password - ⚠️ مؤقتاً
 export const changePassword = createAsyncThunk(
   'client/changePassword',
   async ({ current_password, new_password, confirm_password }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/user/change-password', {
+      const response = await api.post('/auth/change-password', {
         current_password,
         new_password,
         new_password_confirmation: confirm_password,
@@ -215,6 +237,9 @@ const clientSlice = createSlice({
       // Profile
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.profile = action.payload;
+        // تحديث user فـ localStorage
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({ ...user, ...action.payload }));
       })
       // Favorites
       .addCase(getFavorites.fulfilled, (state, action) => {

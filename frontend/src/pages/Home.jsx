@@ -1,362 +1,365 @@
-// pages/Home.jsx
 import { useNavigate, Link } from 'react-router-dom';
-// src/pages/Home.jsx
-// غير هذا السطر:
-import Navbar from '../components/layout/Navbar';  // ✅ من layout مش common
-import {
-  ShieldCheck,
-  Star,
-  MapPin,
-  MessageCircle,
-  Wrench,
-  Briefcase,
-  Truck,
-  Laptop,
-  Scissors,
-  BookOpen,
-  ArrowLeft,
-  Home as HomeIcon,
-  Users,
-  CheckCircle,
-  Clock,
-  Phone,
-  Mail,
+import { useState } from 'react';
+import { 
+  Shield, Star, MapPin, MessageSquare, 
+  Wrench, Briefcase, Truck, Laptop, Scissors, BookOpen,
+  ChevronRight, Search, Users, CheckCircle, Clock, Phone, Mail,
+  ArrowRight, Zap, Award, Target, Heart, Eye, ThumbsUp, 
+  Lock, Headphones, Sparkles, Verified, CreditCard, Globe
 } from 'lucide-react';
-
 import '../styles/Home.css';
-
 export default function Home() {
   const navigate = useNavigate();
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const toggleFaq = (index) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
 
   const services = [
-    { icon: <Wrench size={30} />, title: 'الصيانة والتركيب', desc: 'كهرباء، سباكة، نجارة، صباغة' },
-    { icon: <Laptop size={30} />, title: 'الخدمات الرقمية', desc: 'تصميم، برمجة، تسويق إلكتروني' },
-    { icon: <Truck size={30} />, title: 'النقل والتوصيل', desc: 'نقل الأثاث والتوصيل' },
-    { icon: <BookOpen size={30} />, title: 'الدروس والتعليم', desc: 'لغات، دعم، تكوين مهني' },
-    { icon: <Scissors size={30} />, title: 'الحلاقة والتجميل', desc: 'خدمات منزلية احترافية' },
-    { icon: <Briefcase size={30} />, title: 'أعمال متنوعة', desc: 'كل الخدمات المهنية اليومية' },
+    { icon: <Wrench size={28} />, title: 'الصيانة والتركيب', desc: 'كهرباء، سباكة، نجارة، صباغة' },
+    { icon: <Laptop size={28} />, title: 'الخدمات الرقمية', desc: 'تصميم، برمجة، تسويق إلكتروني' },
+    { icon: <Truck size={28} />, title: 'النقل والتوصيل', desc: 'نقل الأثاث والتوصيل السريع' },
+    { icon: <BookOpen size={28} />, title: 'الدروس والتعليم', desc: 'لغات، دعم مدرسي، تكوين مهني' },
+    { icon: <Scissors size={28} />, title: 'الحلاقة والتجميل', desc: 'خدمات منزلية احترافية' },
+    { icon: <Briefcase size={28} />, title: 'أعمال متنوعة', desc: 'كل الخدمات المهنية اليومية' },
+  ];
+
+  const features = [
+    { icon: <Shield size={32} />, title: 'أمان وثقة', desc: 'حسابات موثقة وتقييمات حقيقية', color: '#1e3f7a' },
+    { icon: <MessageSquare size={32} />, title: 'تواصل مباشر', desc: 'دردشة فورية داخل المنصة', color: '#d4a017' },
+    { icon: <MapPin size={32} />, title: 'قريب منك', desc: 'اعثر على مهنيين في مدينتك', color: '#1e3f7a' },
+    { icon: <Star size={32} />, title: 'تقييمات شفافة', desc: 'شاهد آراء العملاء قبل الاختيار', color: '#d4a017' },
+  ];
+
+  const steps = [
+    { num: '01', title: 'إنشاء حساب', desc: 'سجل مجاناً في دقيقة واحدة', icon: <Users size={24} /> },
+    { num: '02', title: 'نشر طلب', desc: 'صف الخدمة التي تحتاجها', icon: <Target size={24} /> },
+    { num: '03', title: 'اختيار مهني', desc: 'قارن العروض والأسعار', icon: <Award size={24} /> },
+    { num: '04', title: 'إنجاز المهمة', desc: 'أنجز العمل وقيّم المهني', icon: <ThumbsUp size={24} /> },
+  ];
+
+  const trustItems = [
+    { icon: <Verified size={28} />, title: 'مهنيون موثقون', desc: 'جميع المهنيين تم التحقق من هوياتهم', color: '#1e3f7a' },
+    { icon: <Lock size={28} />, title: 'مدفوعات آمنة', desc: 'معاملات مشفرة 100%', color: '#d4a017' },
+    { icon: <Headphones size={28} />, title: 'دعم سريع', desc: 'فريق دعم متواجد 24/7', color: '#1e3f7a' },
+    { icon: <Star size={28} />, title: 'تقييمات حقيقية', desc: 'تقييمات من عملاء حقيقيين', color: '#d4a017' },
   ];
 
   const testimonials = [
-    { name: 'سارة', text: 'لقيت مصمم محترف فـ أقل من ساعة، التجربة كانت ممتازة.', rating: 5 },
-    { name: 'يوسف', text: 'أول مرة نخدم عبر منصة منظمة وآمنة بهاد الشكل.', rating: 5 },
-    { name: 'حمزة', text: 'الرسائل والتقييمات سهلوا عليا اختيار المهني المناسب.', rating: 4 },
+    { name: 'سارة أحمد', role: 'عميلة', text: 'خدمة ممتازة! لقيت أفضل مصمم في وقت قياسي.', rating: 5, initials: 'س', bgColor: '#1e3f7a' },
+    { name: 'يوسف العلوي', role: 'مهني', text: 'المنصة ساعدتني نوصل لعدد كبير من العملاء.', rating: 5, initials: 'ي', bgColor: '#d4a017' },
+    { name: 'فاطمة الزهراء', role: 'عميلة', text: 'آمنة وسهلة الاستخدام. أنصح بها بشدة.', rating: 4, initials: 'ف', bgColor: '#1e3f7a' },
+    { name: 'أحمد البقالي', role: 'مهني', text: 'أفضل منصة للخدمات المهنية في المغرب.', rating: 5, initials: 'أ', bgColor: '#d4a017' },
   ];
 
-  const faq = [
-    { q: 'كيفاش نخدم فالموقع؟', a: 'سجل حسابك، نشر طلب أو قدم خدمة، وتواصل مباشرة مع المهنيين أو العملاء.' },
-    { q: 'واش الموقع آمن؟', a: 'نعم، جميع الحسابات محمية مع نظام تقييم وتبليغ، وبياناتك مشفرة بالكامل.' },
-    { q: 'واش التسجيل مجاني؟', a: 'نعم، التسجيل واستعمال المنصة مجاني 100% لكل المستخدمين.' },
-    { q: 'كيفاش ندفع للمهني؟', a: 'يمكنك الاتفاق مع المهني مباشرة، المنصة توفر وسائل تواصل آمنة.' },
+  const faqs = [
+    { q: 'كيف أبدأ باستخدام المنصة؟', a: 'سجل حسابك مجاناً، ثم ابدأ كنشر طلب أو عرض خدمتك.' },
+    { q: 'هل الخدمة مجانية؟', a: 'نعم، التسجيل والاستخدام الأساسي مجاني 100%.' },
+    { q: 'كيف أتواصل مع المهنيين؟', a: 'عبر الرسائل المباشرة داخل المنصة.' },
+    { q: 'هل الموقع آمن؟', a: 'نعم، جميع المعاملات مشفرة وحسابات موثقة.' },
+    { q: 'كيف يتم الدفع؟', a: 'يمكنك الدفع نقداً أو عبر بطاقات الائتمان.' },
+    { q: 'ماذا لو لم تعجبني الخدمة؟', a: 'لديك نظام تقييم وشكاوى. فريق الدعم يتوسط لحل المشكلات.' },
   ];
 
-  const CARDS = [
-    { cls: 'prof-card--1', emoji: '👨‍🔧', bg: '#eef4fc', name: 'محمد أمين', role: 'كهربائي معتمد', stars: '⭐ 4.9', tags: ['كهرباء', 'تركيب'], price: '150 درهم/ساعة' },
-    { cls: 'prof-card--2', emoji: '👩‍💻', bg: '#fefaee', name: 'سلمى الإدريسي', role: 'مصممة جرافيك', stars: '⭐ 5.0', tags: ['تصميم', 'فيغما'], price: '200 درهم/ساعة' },
-    { cls: 'prof-card--3', emoji: '🍳', bg: '#f0fdf4', name: 'يوسف البلال', role: 'طباخ منزلي', stars: '⭐ 4.8', tags: ['طبخ', 'حفلات'], price: '120 درهم/ساعة' },
+  const stats = [
+    { value: '5000+', label: 'مهني نشيط', icon: <Briefcase size={24} /> },
+    { value: '12000+', label: 'مهمة منجزة', icon: <CheckCircle size={24} /> },
+    { value: '4.8 ★', label: 'تقييم العملاء', icon: <Star size={24} /> },
+    { value: '98%', label: 'رضى العملاء', icon: <Heart size={24} /> },
   ];
 
   return (
-    <>
-      <Navbar />
-
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero__blobs">
-          <div className="hero__blob hero__blob--1" />
-          <div className="hero__blob hero__blob--2" />
-          <div className="hero__blob hero__blob--3" />
+    <div className="home-page">
+      {/* HERO SECTION */}
+      <section className="home-hero">
+        <div className="home-hero-bg">
+          <div className="home-hero-blob1"></div>
+          <div className="home-hero-blob2"></div>
         </div>
-
-        <div className="hero__inner">
-          <div className="hero__content">
-            <div className="hero__badge">
-              <span className="hero__badge-pulse" />
-              منصة مغربية موثوقة ١٠٠٪
+        <div className="home-container">
+          <div className="home-hero-content">
+            <div className="home-badge">
+              <Zap size={14} />
+              <span>منصة مغربية موثوقة</span>
             </div>
-
-            <h1 className="hero__title">
-              <span className="hero__title-navy">فرص الشغل</span><br />
-              <span className="hero__title-gold">بين يديك</span>
+            <h1>
+              فرص الشغل <span className="text-gold">بين يديك</span>
             </h1>
-
-            <p className="hero__desc">
+            <p>
               منصة <strong>فرصة عمل</strong> تجمع المهنيين المغاربة مع العملاء بكل سهولة وأمان.
               ابحث عن الخدمة التي تحتاجها أو اعرض مهارتك لآلاف العملاء.
             </p>
-
-            <div className="hero__actions">
-              <button className="btn-hero-gold" onClick={() => navigate('/auth?mode=register')}>
-                ابدأ مجاناً ←
+            <div className="home-hero-buttons">
+              <button className="btn-primary" onClick={() => navigate('/auth?mode=register')}>
+                ابدأ مجاناً <ArrowRight size={18} />
               </button>
-              <button className="btn-hero-outline" onClick={() => navigate('/how-it-works')}>
+              <button className="btn-outline" onClick={() => navigate('/how-it-works')}>
                 كيف يعمل الموقع؟
               </button>
             </div>
-
-            <div className="hero__stats">
-              <div className="hero__stat">
-                <div className="hero__stat-num">+٥٠٠٠</div>
-                <div className="hero__stat-lbl">مهني نشيط</div>
-              </div>
-              <div className="hero__stat">
-                <div className="hero__stat-num">+١٢٠٠٠</div>
-                <div className="hero__stat-lbl">مهمة منجزة</div>
-              </div>
-              <div className="hero__stat">
-                <div className="hero__stat-num">٤.٨ ★</div>
-                <div className="hero__stat-lbl">تقييم العملاء</div>
-              </div>
+            <div className="home-stats">
+              {stats.map((stat, i) => (
+                <div key={i} className="home-stat">
+                  <div className="home-stat-icon">{stat.icon}</div>
+                  <div>
+                    <div className="home-stat-value">{stat.value}</div>
+                    <div className="home-stat-label">{stat.label}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
+          <div className="home-hero-search">
+            <div className="search-wrapper">
+              <Search size={20} />
+              <input type="text" placeholder="عن أي خدمة تبحث؟ كهربائي، مصمم، سباك..." />
+              <button onClick={() => navigate('/client/search')}>بحث</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {/* بطاقات عائمة */}
-          <div className="hero__visual">
-            {CARDS.map((c) => (
-              <div key={c.name} className={`prof-card ${c.cls}`}>
-                <div className="prof-card__top">
-                  <div className="prof-card__av" style={{ background: c.bg }}>{c.emoji}</div>
-                  <div>
-                    <div className="prof-card__name">{c.name}</div>
-                    <div className="prof-card__role">{c.role}</div>
-                  </div>
-                  <div className="prof-card__stars">{c.stars}</div>
-                </div>
-                <div className="prof-card__tags">
-                  {c.tags.map(t => <span key={t} className="prof-tag">{t}</span>)}
-                  <span className="prof-price">{c.price}</span>
-                </div>
+      {/* SERVICES SECTION */}
+      <section className="home-services">
+        <div className="home-container">
+          <div className="section-header">
+            <span>خدماتنا</span>
+            <h2>كل ما تحتاجه في <span className="text-gold">مكان واحد</span></h2>
+            <p>تشكيلة واسعة من المهن تغطي جميع احتياجاتك اليومية</p>
+          </div>
+          <div className="services-grid">
+            {services.map((service, i) => (
+              <div key={i} className="service-card" onClick={() => navigate('/client/search')}>
+                <div className="service-icon">{service.icon}</div>
+                <h3>{service.title}</h3>
+                <p>{service.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* SEARCH */}
-      <div className="search-wrap">
-        <div className="search-box">
-          <span className="search-box__icon">🔍</span>
-          <input className="search-box__input" placeholder="عن أي خدمة تبحث؟  مثال: كهربائي، مصمم..." />
-          <button className="search-box__btn" onClick={() => navigate('/client/search')}>بحث</button>
-        </div>
-      </div>
-
-      {/* SERVICES */}
-      <section className="services" id="services">
-        <div className="section-head">
-          <span>الخدمات</span>
-          <h2>كل ما تحتاجه في <span className="gold">مكان واحد</span></h2>
-          <p className="sec-desc">تشكيلة واسعة من المهن تغطي جميع احتياجاتك اليومية</p>
-        </div>
-
-        <div className="services-grid">
-          {services.map((service) => (
-            <div className="service-card" key={service.title}>
-              <div className="service-icon">{service.icon}</div>
-              <h3>{service.title}</h3>
-              <p>{service.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* WHY US */}
-      <section className="why-us" id="why-us">
-        <div className="section-head">
-          <span>لماذا نحن</span>
-          <h2>لماذا تختار <span className="navy">فرصة عمل</span>؟</h2>
-        </div>
-
-        <div className="why-grid">
-          <div className="why-card">
-            <ShieldCheck size={32} />
-            <h3>أمان وثقة</h3>
-            <p>حسابات موثقة وتقييمات حقيقية.</p>
+      {/* FEATURES SECTION */}
+      <section className="home-features">
+        <div className="home-container">
+          <div className="section-header">
+            <span>لماذا نحن</span>
+            <h2>لماذا تختار <span className="text-gold">فرصة عمل</span>؟</h2>
           </div>
-          <div className="why-card">
-            <MessageCircle size={32} />
-            <h3>تواصل مباشر</h3>
-            <p>دردشة فورية داخل المنصة.</p>
-          </div>
-          <div className="why-card">
-            <MapPin size={32} />
-            <h3>قريب منك</h3>
-            <p>اعثر على مهنيين في مدينتك.</p>
-          </div>
-          <div className="why-card">
-            <Star size={32} />
-            <h3>تقييمات شفافة</h3>
-            <p>شاهد آراء العملاء قبل الاختيار.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section className="how-it-works" id="how-it-works">
-        <div className="section-head">
-          <span>كيف يعمل</span>
-          <h2>٤ خطوات <span className="gold">بسيطة</span></h2>
-          <p className="sec-desc">تفصلك عن إنجاز مهمتك أو الحصول على شغل جديد</p>
-        </div>
-        <div className="steps-grid">
-          <div className="step-card">
-            <div className="step-num">١</div>
-            <div className="step-title">أنشئ حسابك</div>
-            <p className="step-desc">سجّل كعميل أو صاحب مهنة في دقيقتين</p>
-          </div>
-          <div className="step-card">
-            <div className="step-num">٢</div>
-            <div className="step-title">انشر أو ابحث</div>
-            <p className="step-desc">العميل ينشر طلبه، والمهني يقدم عرضه</p>
-          </div>
-          <div className="step-card">
-            <div className="step-num">٣</div>
-            <div className="step-title">اختر وتواصل</div>
-            <p className="step-desc">قارن العروض وتواصل مباشرة</p>
-          </div>
-          <div className="step-card">
-            <div className="step-num">٤</div>
-            <div className="step-title">أنجز وقيّم</div>
-            <p className="step-desc">أنجز المهمة واستلم أجرك</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ABOUT */}
-      <section className="about" id="about">
-        <div className="section-head">
-          <span>من نحن</span>
-          <h2>منصة <span className="gold">فرصة عمل</span></h2>
-          <p className="sec-desc">منصة مغربية 100% تجمع الخدمات المهنية والعملاء في مكان واحد</p>
-        </div>
-        <div className="about-content">
-          <div className="about-text">
-            <p>فرصة عمل هي منصة إلكترونية مغربية تهدف إلى تسهيل التواصل بين أصحاب المهن والعملاء. نقدم حلولاً مبتكرة وسريعة لتلبية احتياجاتكم اليومية.</p>
-            <p>نسعى لخلق بيئة آمنة وموثوقة تساهم في تطوير القطاع المهني بالمغرب من خلال التكنولوجيا.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* TESTIMONIALS */}
-      <section className="testimonials">
-        <div className="section-head">
-          <span>آراء المستخدمين</span>
-          <h2>ماذا يقول عملاؤنا؟</h2>
-        </div>
-
-        <div className="testimonials-grid">
-          {testimonials.map((item) => (
-            <div className="testimonial-card" key={item.name}>
-              <div className="testimonial-avatar">{item.name.charAt(0)}</div>
-              <h3>{item.name}</h3>
-              <div className="testimonial-stars">
-                {"★".repeat(item.rating)}{"☆".repeat(5 - item.rating)}
+          <div className="features-grid">
+            {features.map((feature, i) => (
+              <div key={i} className="feature-card">
+                <div className="feature-icon" style={{ backgroundColor: `${feature.color}15`, color: feature.color }}>
+                  {feature.icon}
+                </div>
+                <h3>{feature.title}</h3>
+                <p>{feature.desc}</p>
               </div>
-              <p>{item.text}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="faq">
-        <div className="section-head">
-          <span>الأسئلة الشائعة</span>
-          <h2>كل ما تحتاج معرفته</h2>
-        </div>
-
-        <div className="faq-list">
-          {faq.map((item) => (
-            <div className="faq-item" key={item.q}>
-              <h3>{item.q}</h3>
-              <p>{item.a}</p>
+      {/* TRUST SECTION */}
+      <section className="home-trust">
+        <div className="home-container">
+          <div className="trust-header">
+            <div className="trust-badge">
+              <Sparkles size={16} />
+              <span>لماذا تثق بنا</span>
             </div>
-          ))}
+            <h2>منصة موثوقة <span className="text-gold">للجميع</span></h2>
+            <p>نضمن لك تجربة آمنة ومريحة</p>
+          </div>
+          <div className="trust-grid">
+            {trustItems.map((item, i) => (
+              <div key={i} className="trust-card">
+                <div className="trust-icon" style={{ backgroundColor: `${item.color}15`, color: item.color }}>
+                  {item.icon}
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="cta">
-        <h2>ابدأ الآن مجاناً</h2>
-        <p>انضم إلى آلاف المستخدمين وابحث عن فرصتك اليوم.</p>
-        <button className="btn-primary" onClick={() => navigate('/auth?mode=register')}>
-          إنشاء حساب
-        </button>
+      {/* HOW IT WORKS SECTION */}
+      <section className="home-steps">
+        <div className="home-container">
+          <div className="section-header">
+            <span>كيف يعمل</span>
+            <h2>أربع خطوات <span className="text-gold">بسيطة</span></h2>
+            <p>تفصلك عن إنجاز مهمتك أو الحصول على شغل جديد</p>
+          </div>
+          <div className="steps-grid">
+            {steps.map((step, i) => (
+              <div key={i} className="step-card">
+                <div className="step-number">{step.num}</div>
+                <div className="step-icon">{step.icon}</div>
+                <h3>{step.title}</h3>
+                <p>{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS SECTION */}
+      <section className="home-testimonials">
+        <div className="home-container">
+          <div className="section-header">
+            <span>آراء المستخدمين</span>
+            <h2>ماذا يقول <span className="text-gold">عملاؤنا</span>؟</h2>
+            <p>أكثر من 12000 عميل سعيد</p>
+          </div>
+          <div className="testimonials-grid">
+            {testimonials.map((item, i) => (
+              <div key={i} className="testimonial-card">
+                <div className="testimonial-avatar" style={{ backgroundColor: item.bgColor }}>
+                  {item.initials}
+                </div>
+                <div className="testimonial-stars">
+                  {'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}
+                </div>
+                <p className="testimonial-text">"{item.text}"</p>
+                <h3>{item.name}</h3>
+                <p className="testimonial-role">{item.role}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ SECTION */}
+      <section className="home-faq">
+        <div className="home-container">
+          <div className="faq-wrapper">
+            <div className="faq-left">
+              <div className="faq-badge">
+                <MessageSquare size={16} />
+                <span>دعم ومساعدة</span>
+              </div>
+              <h2>الأسئلة <span className="text-gold">الشائعة</span></h2>
+              <p>أجوبة على أكثر الأسئلة شيوعاً</p>
+              <button className="btn-outline" onClick={() => navigate('/contact')}>
+                تواصل معنا <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="faq-right">
+              {faqs.map((item, i) => (
+                <div key={i} className={`faq-item ${openFaq === i ? 'active' : ''}`}>
+                  <button className="faq-question" onClick={() => toggleFaq(i)}>
+                    <span>{item.q}</span>
+                    <ChevronRight size={18} className={`faq-icon ${openFaq === i ? 'rotated' : ''}`} />
+                  </button>
+                  <div className={`faq-answer ${openFaq === i ? 'open' : ''}`}>
+                    <p>{item.a}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA SECTION */}
+      <section className="home-cta">
+        <div className="home-container">
+          <h2>ابدأ الآن مجاناً</h2>
+          <p>انضم إلى آلاف المستخدمين وابحث عن فرصتك اليوم</p>
+          <button className="btn-primary btn-large" onClick={() => navigate('/auth?mode=register')}>
+            إنشاء حساب <ArrowRight size={18} />
+          </button>
+        </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="footer">
-        <div className="footer-container">
+      <footer className="home-footer">
+        <div className="home-container">
           <div className="footer-grid">
-            {/* Column 1 - Brand */}
-            <div className="footer-col">
-              <div className="footer-logo">فرصة <span>عمل</span></div>
-              <p className="footer-desc">
-                منصة مغربية تربط بين أصحاب المهن والعملاء بكل سهولة وأمان.
-              </p>
+            <div className="footer-col brand-col">
+              <div className="footer-logo">
+                <span className="logo-icon">🔍</span>
+                فرصة <span>عمل</span>
+              </div>
+              <p>منصة مغربية رائدة تربط بين الخدمات المهنية والعملاء بكل سهولة وأمان.</p>
               <div className="footer-social">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="social-text">Facebook</a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="social-text">Twitter</a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-text">Instagram</a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-text">LinkedIn</a>
+                <a href="#" target="_blank" rel="noopener noreferrer">📘 فيسبوك</a>
+                <a href="#" target="_blank" rel="noopener noreferrer">🐦 تويتر</a>
+                <a href="#" target="_blank" rel="noopener noreferrer">📸 إنستغرام</a>
+                <a href="#" target="_blank" rel="noopener noreferrer">🔗 لينكدإن</a>
               </div>
             </div>
 
-            {/* Column 2 - Quick Links */}
             <div className="footer-col">
               <h4>روابط سريعة</h4>
               <ul>
-                <li><Link to="/">الرئيسية</Link></li>
-                <li><Link to="/services">الخدمات</Link></li>
-                <li><Link to="/how-it-works">كيف يعمل</Link></li>
-                <li><Link to="/about">من نحن</Link></li>
+                <li><button onClick={() => navigate('/')}>الرئيسية</button></li>
+                <li><button onClick={() => navigate('/services')}>الخدمات</button></li>
+                <li><button onClick={() => navigate('/how-it-works')}>كيف يعمل</button></li>
+                <li><button onClick={() => navigate('/about')}>من نحن</button></li>
               </ul>
             </div>
 
-            {/* Column 3 - For Users */}
             <div className="footer-col">
               <h4>للمستخدمين</h4>
               <ul>
-                <li><Link to="/auth?mode=login">تسجيل الدخول</Link></li>
-                <li><Link to="/auth?mode=register">إنشاء حساب</Link></li>
-                <li><Link to="/client/search">البحث عن خدمة</Link></li>
-                <li><Link to="/worker/services">عرض خدمة</Link></li>
+                <li><button onClick={() => navigate('/auth?mode=login')}>تسجيل الدخول</button></li>
+                <li><button onClick={() => navigate('/auth?mode=register')}>إنشاء حساب</button></li>
+                <li><button onClick={() => navigate('/client/search')}>البحث عن خدمة</button></li>
+                <li><button onClick={() => navigate('/worker/services')}>عرض خدمة</button></li>
               </ul>
             </div>
 
-            {/* Column 4 - Contact */}
             <div className="footer-col">
+              <h4>موارد</h4>
+              <ul>
+                <li><button onClick={() => navigate('/blog')}>المدونة</button></li>
+                <li><button onClick={() => navigate('/faq')}>الأسئلة الشائعة</button></li>
+                <li><button onClick={() => navigate('/privacy')}>سياسة الخصوصية</button></li>
+                <li><button onClick={() => navigate('/terms')}>شروط الاستخدام</button></li>
+              </ul>
+            </div>
+
+            <div className="footer-col contact-col">
               <h4>تواصل معنا</h4>
               <ul className="footer-contact">
                 <li><Phone size={16} /> +212 5XX XXX XXX</li>
                 <li><Mail size={16} /> contact@forsa.ma</li>
                 <li><MapPin size={16} /> الدار البيضاء، المغرب</li>
+                <li><Clock size={16} /> دعم 24/7</li>
               </ul>
-            </div>
-
-            {/* Column 5 - Stats */}
-            <div className="footer-col">
-              <h4>إحصائيات المنصة</h4>
-              <div className="footer-stats">
-                <div><HomeIcon size={16} /> <span>+5000 مهني</span></div>
-                <div><CheckCircle size={16} /> <span>+12000 خدمة</span></div>
-                <div><Users size={16} /> <span>+8000 عميل</span></div>
-                <div><Clock size={16} /> <span>دعم 24/7</span></div>
-              </div>
             </div>
           </div>
 
-          {/* Bottom Bar */}
+          <div className="footer-middle">
+            <div className="footer-middle-item">
+              <Globe size={16} />
+              <span>المغرب</span>
+            </div>
+            <div className="footer-middle-item">
+              <Shield size={16} />
+              <span>منصة معتمدة</span>
+            </div>
+            <div className="footer-middle-item">
+              <CreditCard size={16} />
+              <span>دفع آمن</span>
+            </div>
+          </div>
+
           <div className="footer-bottom">
             <p>© {new Date().getFullYear()} فرصة عمل. جميع الحقوق محفوظة</p>
             <div className="footer-bottom-links">
-              <Link to="/privacy">سياسة الخصوصية</Link>
-              <Link to="/terms">شروط الاستخدام</Link>
-              <Link to="/contact">اتصل بنا</Link>
+              <button onClick={() => navigate('/privacy')}>سياسة الخصوصية</button>
+              <button onClick={() => navigate('/terms')}>شروط الاستخدام</button>
+              <button onClick={() => navigate('/contact')}>اتصل بنا</button>
             </div>
           </div>
         </div>
       </footer>
-    </>
+    </div>
   );
 }

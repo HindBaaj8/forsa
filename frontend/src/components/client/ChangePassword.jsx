@@ -7,7 +7,7 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { changePassword } from '../../features/client/clientSlice';
 import { toast } from 'react-hot-toast';
-import '../../styles/Client.css'; // فقط إذا styles داخل components
+import '../../styles/Dashboard.css'; // فقط إذا styles داخل components
 export default function ChangePassword() {
   const navigate = useNavigate();
   const dispatch = useDispatch();

@@ -39,7 +39,7 @@ export const getConversationByOrder = createAsyncThunk(
 );
 
 const initialState = {
-  items: [],
+  conversations: [],
   currentConversation: null,
   unreadCounts: {},
   isLoading: false,
@@ -69,8 +69,7 @@ const conversationSlice = createSlice({
       })
       .addCase(getConversations.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.items = action.payload?.data || action.payload || [];
-      })
+        state.conversations = action.payload?.data || action.payload || [];      })
       .addCase(getConversations.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;

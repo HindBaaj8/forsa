@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { selectUser } from '../../features/auth/authSelectors';
-import '../../styles/Client.css';
+import '../../styles/Dashboard.css';
 export default function ClientLayout({ children, title }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const user = useSelector(selectUser);

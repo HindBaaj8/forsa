@@ -5,7 +5,7 @@ import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { toast } from 'react-hot-toast';
-import '../../styles/Client.css'; // فقط إذا styles داخل components
+import '../../styles/Dashboard.css'; // فقط إذا styles داخل components
 export default function PaymentMethods() {
   const [cards, setCards] = useState([{ id: 1, last4: '4242', expiry: '12/25', name: 'أحمد العلوي', isDefault: true }]);
   const [modalOpen, setModalOpen] = useState(false);

@@ -8,7 +8,6 @@ import {
   Mail, Lock, Eye, EyeOff, User, Phone, ArrowLeft, Check, AlertCircle,
   Shield, Smartphone, ChevronLeft
 } from 'lucide-react';
-import '../../styles/Auth.css';
 
 const maskEmail = (e) => {
   const [u, d] = e.split('@');
@@ -82,25 +81,32 @@ function LoginForm({ onSwitch }) {
     setLoading(true);
     
     try {
-      const response = await api.post('/auth/login', { email, password: pass });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      toast.success('تم تسجيل الدخول بنجاح');
-      
-      if (user.role === 'client') navigate('/client');
-      else if (user.role === 'worker') navigate('/worker');
-      else if (user.role === 'admin') navigate('/admin');
+        const response = await api.post('/auth/login', { email, password: pass });
+        const { token, user } = response.data;
+        
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        toast.success('تم تسجيل الدخول بنجاح');
+        
+        // ✅ التوجيه حسب الدور
+        if (user.role === 'client') {
+            window.location.href = '/client';
+        } else if (user.role === 'worker') {
+            window.location.href = '/worker';
+        } else if (user.role === 'admin') {
+            window.location.href = '/admin';
+        } else {
+            window.location.href = '/';
+        }
     } catch (error) {
-      const message = error.response?.data?.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
-      setErrors({ general: message });
-      toast.error(message);
+        const message = error.response?.data?.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+        setErrors({ general: message });
+        toast.error(message);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   const handleOTP = async (ev) => {
     ev.preventDefault();
@@ -232,32 +238,41 @@ function RegisterForm({ onSwitch }) {
     setLoading(true);
     
     try {
-      const response = await api.post('/auth/register', {
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: form.email,
-        phone: form.phone,
-        password: form.password,
-        password_confirmation: form.password,
-        role: role,
-      });
-      
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      toast.success('تم إنشاء الحساب بنجاح');
-      
-      navigate(role === 'client' ? '/client' : '/worker');
+        const response = await api.post('/auth/register', {
+            first_name: form.firstName,
+            last_name: form.lastName,
+            email: form.email,
+            phone: form.phone,
+            password: form.password,
+            password_confirmation: form.password,
+            role: role,
+        });
+        
+        const { token, user } = response.data;
+        
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        toast.success('تم إنشاء الحساب بنجاح');
+        
+        // ✅ التوجيه حسب الدور
+        if (user.role === 'client') {
+            window.location.href = '/client';
+        } else if (user.role === 'worker') {
+            window.location.href = '/worker';
+        } else if (user.role === 'admin') {
+            window.location.href = '/admin';
+        } else {
+            window.location.href = '/';
+        }
     } catch (error) {
-      const message = error.response?.data?.message || error.response?.data?.errors || 'حدث خطأ';
-      setErrors({ general: typeof message === 'string' ? message : 'فشل إنشاء الحساب' });
-      toast.error('فشل إنشاء الحساب');
+        const message = error.response?.data?.message || error.response?.data?.errors || 'حدث خطأ';
+        setErrors({ general: typeof message === 'string' ? message : 'فشل إنشاء الحساب' });
+        toast.error('فشل إنشاء الحساب');
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   const handleOTP = async (ev) => {
     ev.preventDefault();

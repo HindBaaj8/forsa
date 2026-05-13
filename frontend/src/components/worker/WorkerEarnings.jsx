@@ -4,7 +4,7 @@ import { DollarSign, TrendingUp, Calendar, Wallet } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getWorkerEarnings } from '../../features/worker/workerSlice';
-import '../../styles/Worker.css';
+import '../../styles/Dashboard.css';
 
 function StatCard({ title, value, icon: Icon, color }) {
   return (
