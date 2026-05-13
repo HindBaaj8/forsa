@@ -5,22 +5,31 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Favorite extends Model
+class Notification extends Model
 {
     use HasFactory;
 
+    protected $table = 'notifications';
+
     protected $fillable = [
-        'client_id',
-        'worker_id',
+        'user_id',
+        'type',
+        'title',
+        'message',
+        'data',
+        'link',
+        'is_read'
     ];
 
-    public function client()
-    {
-        return $this->belongsTo(User::class, 'client_id');
-    }
+    protected $casts = [
+        'data' => 'array',
+        'is_read' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
 
-    public function worker()
+    public function user()
     {
-        return $this->belongsTo(User::class, 'worker_id');
+        return $this->belongsTo(User::class);
     }
 }

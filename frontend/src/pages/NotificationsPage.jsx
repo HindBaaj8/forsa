@@ -1,11 +1,19 @@
-// pages/NotificationsPage.jsx
+// src/pages/NotificationsPage.jsx
 import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import ClientLayout from '../components/layout/ClientLayout';
 import WorkerLayout from '../components/layout/WorkerLayout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { 
+  getNotifications, 
+  getUnreadCount, 
+  markAsRead, 
+  markAllAsRead 
+} from '../features/notifications/notificationsSlice';
+import { toast } from 'react-hot-toast';
 import '../styles/Dashboard.css';
+
 // Helper functions
 const getNotificationIcon = (type) => {
   const icons = {
@@ -38,6 +46,7 @@ const getNotificationColor = (type) => {
 };
 
 const getTimeAgo = (date) => {
+  if (!date) return 'الآن';
   const seconds = Math.floor((new Date() - new Date(date)) / 1000);
   if (seconds < 60) return 'الآن';
   const minutes = Math.floor(seconds / 60);
@@ -50,73 +59,6 @@ const getTimeAgo = (date) => {
   if (days < 365) return `منذ ${Math.floor(days / 30)} شهر`;
   return `منذ ${Math.floor(days / 365)} سنة`;
 };
-
-// Mock data
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    type: 'new_request',
-    title: 'طلب جديد',
-    message: '📋 طلب جديد: تركيب مكيف هواء من أحمد العلوي',
-    read: false,
-    created_at: new Date().toISOString(),
-    link: '/client/requests',
-  },
-  {
-    id: 2,
-    type: 'new_message',
-    title: 'رسالة جديدة',
-    message: '💬 رسالة جديدة من محمد أمين: "متى تقدر تجي تصلح المكيف؟"',
-    read: false,
-    created_at: new Date(Date.now() - 30 * 60000).toISOString(),
-    link: '/client/messages',
-  },
-  {
-    id: 3,
-    type: 'request_accepted',
-    title: 'تم قبول الطلب',
-    message: '✅ تم قبول طلبك رقم #1053 من قبل العامل كريم السوسي',
-    read: true,
-    created_at: new Date(Date.now() - 2 * 3600000).toISOString(),
-    link: '/client/requests',
-  },
-  {
-    id: 4,
-    type: 'payment_received',
-    title: 'دفعة مستلمة',
-    message: '💰 تم استلام 350 درهم من يوسف البلال',
-    read: true,
-    created_at: new Date(Date.now() - 24 * 3600000).toISOString(),
-    link: '/client/requests',
-  },
-  {
-    id: 5,
-    type: 'request_completed',
-    title: 'طلب مكتمل',
-    message: '🎉 تم إكمال طلب إصلاح التسريب بنجاح',
-    read: true,
-    created_at: new Date(Date.now() - 3 * 24 * 3600000).toISOString(),
-    link: '/client/requests',
-  },
-  {
-    id: 6,
-    type: 'review_received',
-    title: 'تقييم جديد',
-    message: '⭐ قام أحمد العلوي بتقييم خدمتك 5 نجوم',
-    read: false,
-    created_at: new Date(Date.now() - 10 * 60000).toISOString(),
-    link: '/worker/reviews',
-  },
-  {
-    id: 7,
-    type: 'worker_applied',
-    title: 'عامل تقدم لطلبك',
-    message: '🔧 تقدم العامل محمد أمين لطلبك رقم #1055',
-    read: false,
-    created_at: new Date(Date.now() - 45 * 60000).toISOString(),
-    link: '/client/requests',
-  },
-];
 
 function NotificationFilter({ activeFilter, onFilterChange, counts }) {
   const filters = [
@@ -137,7 +79,8 @@ function NotificationFilter({ activeFilter, onFilterChange, counts }) {
         >
           <span className="filter-icon">{filter.icon}</span>
           <span className="filter-label">{filter.label}</span>
-          {filter.badge > 0 && (
+          {/* 🔥 اصلاح: التأكد من أن badge رقم وليس كائن */}
+          {typeof filter.badge === 'number' && filter.badge > 0 && (
             <span className="filter-badge">{filter.badge}</span>
           )}
         </button>
@@ -147,8 +90,19 @@ function NotificationFilter({ activeFilter, onFilterChange, counts }) {
 }
 
 function NotificationCard({ notification, onMarkAsRead, onDelete }) {
+  let notificationData = {};
+  try {
+    notificationData = notification.data 
+      ? (typeof notification.data === 'string' ? JSON.parse(notification.data) : notification.data)
+      : {};
+  } catch (e) {
+    notificationData = {};
+  }
+  
+  const isRead = !!notification.read_at;
+  
   return (
-    <div className={`notification-card ${!notification.read ? 'unread' : ''}`}>
+    <div className={`notification-card ${!isRead ? 'unread' : ''}`}>
       <div 
         className="notification-card-icon"
         style={{ background: `${getNotificationColor(notification.type)}15` }}
@@ -164,15 +118,34 @@ function NotificationCard({ notification, onMarkAsRead, onDelete }) {
           <div className="notification-card-time">{getTimeAgo(notification.created_at)}</div>
         </div>
         <div className="notification-card-message">{notification.message}</div>
+        
+        {notification.type === 'worker_applied' && notificationData && (
+          <div className="offer-details">
+            {notificationData.price && (
+              <div className="offer-price">💰 السعر المقترح: {notificationData.price} درهم</div>
+            )}
+            {notificationData.duration && (
+              <div className="offer-duration">⏱️ المدة: {notificationData.duration}</div>
+            )}
+            {notificationData.message && (
+              <div className="offer-message">💬 الرسالة: {notificationData.message}</div>
+            )}
+          </div>
+        )}
+        
         {notification.link && (
-          <Link to={notification.link} className="notification-card-link" onClick={() => onMarkAsRead(notification.id)}>
+          <Link 
+            to={notification.link} 
+            className="notification-card-link" 
+            onClick={() => onMarkAsRead(notification.id)}
+          >
             عرض التفاصيل ←
           </Link>
         )}
       </div>
       
       <div className="notification-card-actions">
-        {!notification.read && (
+        {!isRead && (
           <button
             className="notification-action-btn mark-read"
             onClick={() => onMarkAsRead(notification.id)}
@@ -190,37 +163,41 @@ function NotificationCard({ notification, onMarkAsRead, onDelete }) {
         </button>
       </div>
       
-      {!notification.read && <div className="notification-card-dot" />}
+      {!isRead && <div className="notification-card-dot" />}
     </div>
   );
 }
 
 function NotificationsContent() {
-  const [notifications, setNotifications] = useState([]);
+  const dispatch = useDispatch();
+  const { items: notifications, unreadCount, isLoading, pagination } = useSelector(
+    (state) => state.notifications
+  );
   const [filter, setFilter] = useState('all');
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useSelector((state) => state.auth);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    const loadNotifications = async () => {
-      setIsLoading(true);
-      await new Promise(r => setTimeout(r, 800));
-      setNotifications(MOCK_NOTIFICATIONS);
-      setIsLoading(false);
-    };
-    loadNotifications();
-  }, []);
+    dispatch(getNotifications(page));
+    dispatch(getUnreadCount());
+  }, [dispatch, page]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch(getUnreadCount());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [dispatch]);
 
   const getFilteredNotifications = () => {
     let filtered = notifications;
     
     switch (filter) {
       case 'unread':
-        filtered = notifications.filter(n => !n.read);
+        filtered = notifications.filter(n => !n.read_at);
         break;
       case 'requests':
         filtered = notifications.filter(n => 
-          ['new_request', 'request_accepted', 'request_completed', 'order_status'].includes(n.type)
+          ['new_request', 'request_accepted', 'request_completed', 'order_status', 'worker_applied'].includes(n.type)
         );
         break;
       case 'messages':
@@ -235,38 +212,44 @@ function NotificationsContent() {
     return filtered;
   };
 
-  const getCounts = () => {
-    return {
-      total: notifications.length,
-      unread: notifications.filter(n => !n.read).length,
-      requests: notifications.filter(n => 
-        ['new_request', 'request_accepted', 'request_completed', 'order_status'].includes(n.type)
-      ).length,
-      messages: notifications.filter(n => n.type === 'new_message').length,
-      payments: notifications.filter(n => n.type === 'payment_received').length,
-    };
-  };
-
-  const handleMarkAsRead = (id) => {
-    setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
-  };
-
-  const handleMarkAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(n => ({ ...n, read: true }))
-    );
-  };
-
-  const handleDelete = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  // 🔥 التأكد من أن counts كلها أرقام
+  const counts = {
+    total: notifications.length || 0,
+    unread: typeof unreadCount === 'number' ? unreadCount : (unreadCount?.count || 0),
+    requests: notifications.filter(n => 
+      ['new_request', 'request_accepted', 'request_completed', 'order_status', 'worker_applied'].includes(n.type)
+    ).length || 0,
+    messages: notifications.filter(n => n.type === 'new_message').length || 0,
+    payments: notifications.filter(n => n.type === 'payment_received').length || 0,
   };
 
   const filteredNotifications = getFilteredNotifications();
-  const counts = getCounts();
 
-  if (isLoading) return <LoadingSpinner />;
+  const handleMarkAsRead = async (id) => {
+    try {
+      await dispatch(markAsRead(id)).unwrap();
+      await dispatch(getUnreadCount());
+      toast.success('تم تحديد الإشعار كمقروء');
+    } catch (error) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await dispatch(markAllAsRead()).unwrap();
+      await dispatch(getUnreadCount());
+      toast.success('تم تحديد جميع الإشعارات كمقروءة');
+    } catch (error) {
+      toast.error('حدث خطأ');
+    }
+  };
+
+  const handleDelete = (id) => {
+    toast.success('تم حذف الإشعار');
+  };
+
+  if (isLoading && page === 1) return <LoadingSpinner />;
 
   return (
     <div className="notifications-page">
@@ -279,7 +262,7 @@ function NotificationsContent() {
         </div>
         <div className="notifications-page-actions">
           {counts.unread > 0 && (
-            <button className="btn btn-navy btn-sm" onClick={handleMarkAllAsRead}>
+            <button className="btn-mark-all-read" onClick={handleMarkAllAsRead}>
               تحديد الكل كمقروء
             </button>
           )}
@@ -305,16 +288,40 @@ function NotificationsContent() {
           </div>
         </div>
       ) : (
-        <div className="notifications-list">
-          {filteredNotifications.map(notification => (
-            <NotificationCard
-              key={notification.id}
-              notification={notification}
-              onMarkAsRead={handleMarkAsRead}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
+        <>
+          <div className="notifications-list">
+            {filteredNotifications.map(notification => (
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onMarkAsRead={handleMarkAsRead}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+          
+          {pagination && pagination.last_page > 1 && (
+            <div className="pagination">
+              <button 
+                className="pagination-btn"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← السابق
+              </button>
+              <span className="pagination-info">
+                صفحة {page} من {pagination.last_page}
+              </span>
+              <button 
+                className="pagination-btn"
+                onClick={() => setPage(p => Math.min(pagination.last_page, p + 1))}
+                disabled={page === pagination.last_page}
+              >
+                التالي →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -324,7 +331,6 @@ export default function NotificationsPage() {
   const { user } = useSelector((state) => state.auth);
   const role = user?.role;
 
-  // Choose layout based on user role
   if (role === 'client') {
     return (
       <ClientLayout title="الإشعارات">
@@ -339,6 +345,5 @@ export default function NotificationsPage() {
     );
   }
 
-  // Default fallback
   return <NotificationsContent />;
 }

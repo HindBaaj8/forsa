@@ -1,5 +1,7 @@
+// src/features/notifications/notificationsSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+
 export const getNotifications = createAsyncThunk(
   'notifications/getAll',
   async (page = 1, { rejectWithValue }) => {
@@ -17,7 +19,8 @@ export const getUnreadCount = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/notifications/unread-count');
-      return response.data;
+      // 🔥 التأكد من إرجاع العدد الصحيح
+      return response.data?.count || response.data || 0;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }
@@ -68,7 +71,6 @@ const notificationSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    // Real-time notification received
     receiveNotification: (state, action) => {
       state.items.unshift(action.payload);
       state.unreadCount += 1;
@@ -82,20 +84,26 @@ const notificationSlice = createSlice({
       })
       .addCase(getNotifications.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.items = action.payload.data || action.payload;
-        if (action.payload.meta) {
+        state.items = action.payload?.data || [];
+        if (action.payload?.meta) {
           state.pagination = action.payload.meta;
         }
       })
       .addCase(getNotifications.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+        state.items = [];
       })
       .addCase(getUnreadCount.fulfilled, (state, action) => {
-        state.unreadCount = action.payload.count || action.payload;
+        // 🔥 التأكد من أن القيمة رقم
+        state.unreadCount = typeof action.payload === 'number' ? action.payload : (action.payload?.count || 0);
+      })
+      .addCase(getUnreadCount.rejected, (state) => {
+        state.unreadCount = 0;
       })
       .addCase(markAsRead.fulfilled, (state, action) => {
-        const index = state.items.findIndex(i => i.id === action.meta.arg);
+        const notificationId = action.meta.arg;
+        const index = state.items.findIndex(i => i.id === notificationId);
         if (index !== -1) {
           state.items[index].read_at = new Date().toISOString();
           state.unreadCount = Math.max(0, state.unreadCount - 1);

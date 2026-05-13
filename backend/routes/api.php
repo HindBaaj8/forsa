@@ -1,5 +1,18 @@
 <?php
 
+// 🔥 حل مشكلة CORS
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header('Access-Control-Allow-Origin: http://localhost:3000');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+    http_response_code(200);
+    exit();
+}
+
+// headers عادية
+header('Access-Control-Allow-Origin: http://localhost:3000');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
@@ -154,23 +167,40 @@ Route::middleware(['auth:sanctum'])->prefix('client')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| /*
+|--------------------------------------------------------------------------
 | WORKER
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum'])->prefix('worker')->group(function () {
+    // Dashboard & Profile
     Route::get('/dashboard', [WorkerController::class, 'dashboard']);
-    Route::get('/services', [WorkerController::class, 'services']);
-    Route::get('/orders', [WorkerController::class, 'orders']);
-    Route::get('/earnings', [WorkerController::class, 'earnings']);
-    Route::get('/schedule', [WorkerController::class, 'schedule']);
-    Route::put('/schedule/{id}', [WorkerController::class, 'updateSchedule']);
     Route::get('/profile', [WorkerController::class, 'profile']);
     Route::put('/profile', [WorkerController::class, 'updateProfile']);
-    Route::put('/notifications', [WorkerController::class, 'updateNotifications']);
+    
+    // Services
+    Route::get('/services', [WorkerController::class, 'services']);
+    
+    // 🔥 الطلبات المتاحة (من العملاء)
+    Route::get('/requests', [WorkerController::class, 'getAvailableRequests']);
+    Route::post('/requests/{request}/accept', [WorkerController::class, 'acceptRequest']);
+    Route::post('/requests/{request}/reject', [WorkerController::class, 'rejectRequest']);
+    Route::post('/requests/{request}/offer', [WorkerController::class, 'submitOffer']);
+    
+    // Orders
+    Route::get('/orders', [WorkerController::class, 'orders']);
     Route::post('/orders/{order}/accept', [WorkerController::class, 'acceptOrder']);
     Route::post('/orders/{order}/reject', [WorkerController::class, 'rejectOrder']);
     Route::post('/orders/{order}/start', [WorkerController::class, 'startOrder']);
     Route::post('/orders/{order}/complete', [WorkerController::class, 'completeOrder']);
+    
+    // Earnings & Schedule
+    Route::get('/earnings', [WorkerController::class, 'earnings']);
+    Route::get('/schedule', [WorkerController::class, 'schedule']);
+    Route::put('/schedule/{id}', [WorkerController::class, 'updateSchedule']);
+    
+    // Notifications
+    Route::put('/notifications', [WorkerController::class, 'updateNotifications']);
 });
 
 /*
