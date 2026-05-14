@@ -15,7 +15,39 @@ class NotificationController extends Controller
     }
 
     /**
-     * جلب جميع الإشعارات للمستخدم الحالي
+     * جلب عدد الإشعارات غير المقروءة
+     */
+    public function unreadCount()
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'count' => 0
+                ]);
+            }
+            
+            $count = Notification::where('user_id', $user->id)
+                ->whereNull('read_at')
+                ->count();
+            
+            return response()->json([
+                'success' => true,
+                'count' => $count
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'count' => 0
+            ]);
+        }
+    }
+
+    /**
+     * جلب قائمة الإشعارات
      */
     public function index(Request $request)
     {
@@ -25,18 +57,13 @@ class NotificationController extends Controller
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized'
-                ], 401);
+                    'data' => []
+                ]);
             }
             
-            $query = Notification::where('user_id', $user->id)
-                ->orderBy('created_at', 'desc');
-            
-            if ($request->has('limit')) {
-                $query->limit($request->limit);
-            }
-            
-            $notifications = $query->paginate(20);
+            $notifications = Notification::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->paginate(20);
             
             return response()->json([
                 'success' => true,
@@ -50,42 +77,15 @@ class NotificationController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Notifications index error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * جلب عدد الإشعارات غير المقروءة
-     */
-    public function unreadCount()
-    {
-        try {
-            $user = Auth::user();
-            
-            if (!$user) {
-                return response()->json(['count' => 0]);
-            }
-            
-            $count = Notification::where('user_id', $user->id)
-                ->where('is_read', false)
-                ->count();
-            
-            return response()->json([
-                'count' => $count
+                'data' => []
             ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Unread count error: ' . $e->getMessage());
-            return response()->json(['count' => 0], 200);
         }
     }
 
     /**
-     * تحديث إشعار كمقروء
+     * تعليم إشعار كمقروء
      */
     public function markAsRead($id)
     {
@@ -103,7 +103,7 @@ class NotificationController extends Controller
                 ], 404);
             }
             
-            $notification->update(['is_read' => true]);
+            $notification->update(['read_at' => now()]);
             
             return response()->json([
                 'success' => true,
@@ -111,16 +111,15 @@ class NotificationController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Mark as read error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Server error'
+                'error' => $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * تحديث جميع الإشعارات كمقروءة
+     * تعليم كل الإشعارات كمقروءة
      */
     public function markAllAsRead()
     {
@@ -128,8 +127,8 @@ class NotificationController extends Controller
             $user = Auth::user();
             
             Notification::where('user_id', $user->id)
-                ->where('is_read', false)
-                ->update(['is_read' => true]);
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
             
             return response()->json([
                 'success' => true,
@@ -137,10 +136,9 @@ class NotificationController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Mark all as read error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Server error'
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -172,10 +170,9 @@ class NotificationController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            Log::error('Delete notification error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Server error'
+                'error' => $e->getMessage()
             ], 500);
         }
     }

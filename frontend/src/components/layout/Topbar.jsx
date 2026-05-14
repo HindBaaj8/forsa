@@ -1,13 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { Search, Bell, Menu, X, User } from 'lucide-react';
 import { selectUser } from '../../features/auth/authSelectors';
+import { getUnreadCount, getNotifications } from '../../features/notifications/notificationsSlice';
 
-export default function Topbar({ title, onMenuClick, notificationCount = 0, mobileMenuOpen = false }) {
+export default function Topbar({ title, onMenuClick, mobileMenuOpen = false }) {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const user = useSelector(selectUser);
+  const { unreadCount } = useSelector((state) => state.notifications);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      // جلب عدد الإشعارات غير المقروءة
+      dispatch(getUnreadCount());
+      
+      // تحديث كل 30 ثانية
+      const interval = setInterval(() => {
+        dispatch(getUnreadCount());
+      }, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [dispatch, user]);
+
+  const handleNotificationsClick = () => {
+    navigate('/notifications');
+  };
 
   return (
     <div className="topbar">
@@ -33,9 +54,14 @@ export default function Topbar({ title, onMenuClick, notificationCount = 0, mobi
           <Search size={20} />
         </button>
 
-        <div className="topbar__notif" onClick={() => navigate('/notifications')}>
+        {/* أيقونة الإشعارات مع العداد */}
+        <div className="topbar__notif" onClick={handleNotificationsClick}>
           <Bell size={20} />
-          {notificationCount > 0 && <div className="topbar__notif-dot">{notificationCount > 9 ? '9+' : notificationCount}</div>}
+          {unreadCount > 0 && (
+            <div className="topbar__notif-dot">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </div>
+          )}
         </div>
 
         <div className="topbar__user" onClick={() => navigate('/worker/profile')}>
@@ -75,6 +101,9 @@ export default function Topbar({ title, onMenuClick, notificationCount = 0, mobi
           justify-content: space-between;
           padding: 0 24px;
           gap: 16px;
+          position: sticky;
+          top: 0;
+          z-index: 100;
         }
 
         .topbar__left {
@@ -196,20 +225,33 @@ export default function Topbar({ title, onMenuClick, notificationCount = 0, mobi
 
         .topbar__notif-dot {
           position: absolute;
-          top: -4px;
-          right: -4px;
-          min-width: 18px;
-          height: 18px;
+          top: -6px;
+          right: -6px;
+          min-width: 20px;
+          height: 20px;
           border-radius: 50%;
           background: var(--error);
           color: white;
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 800;
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 0 4px;
+          padding: 0 5px;
           border: 2px solid white;
+          animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+          }
         }
 
         .topbar__user {

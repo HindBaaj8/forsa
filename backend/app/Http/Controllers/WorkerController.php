@@ -463,72 +463,74 @@ class WorkerController extends Controller
     /**
      * 🔥 تقديم عرض على طلب مع إرسال إشعار للعميل
      */
-    public function submitOffer(Request $request, $requestId)
-    {
-        try {
-            $validated = $request->validate([
-                'price' => 'required|numeric|min:0',
-                'duration' => 'required|string|max:255',
-                'message' => 'nullable|string'
-            ]);
-            
-            $user = Auth::user();
-            
-            if ($user->role !== 'worker') {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            
-            $serviceRequest = ServiceRequest::findOrFail($requestId);
-            
-            if ($serviceRequest->status !== 'pending') {
-                return response()->json(['message' => 'Request is no longer available'], 400);
-            }
-            
-            // إنشاء أو تحديث العرض
-            $interest = Interest::updateOrCreate(
-                [
-                    'request_id' => $serviceRequest->id,
-                    'worker_id' => $user->id
-                ],
-                [
-                    'price' => $validated['price'],
-                    'duration' => $validated['duration'],
-                    'message' => $validated['message'] ?? null,
-                    'status' => 'pending'
-                ]
-            );
-            
-            // 🔥🔥🔥 إنشاء إشعار للعميل 🔥🔥🔥
-            Notification::create([
-                'user_id' => $serviceRequest->client_id,
-                'type' => 'worker_applied',
-                'title' => '📢 عامل مهتم بخدمتك',
-                'message' => "🔧 العامل {$user->first_name} {$user->last_name} قدم عرضاً لطلبك: {$serviceRequest->title} - {$validated['price']} درهم",
-                'data' => json_encode([
-                    'request_id' => $serviceRequest->id,
-                    'worker_id' => $user->id,
-                    'worker_name' => $user->first_name . ' ' . $user->last_name,
-                    'price' => $validated['price'],
-                    'duration' => $validated['duration'],
-                    'offer_message' => $validated['message'] ?? null
-                ]),
-                'link' => '/client/requests',
-                'is_read' => false
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Offer submitted successfully',
-                'data' => $interest,
-                'request_id' => $requestId
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('submitOffer error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+    /**
+ * 🔥 تقديم عرض على طلب مع إرسال إشعار للعميل
+ */
+public function submitOffer(Request $request, $requestId)
+{
+    try {
+        $validated = $request->validate([
+            'price' => 'required|numeric|min:0',
+            'duration' => 'required|string|max:255',
+            'message' => 'nullable|string'
+        ]);
+        
+        $user = Auth::user();
+        
+        if ($user->role !== 'worker') {
+            return response()->json(['message' => 'Unauthorized'], 403);
         }
+        
+        $serviceRequest = ServiceRequest::findOrFail($requestId);
+        
+        if ($serviceRequest->status !== 'pending') {
+            return response()->json(['message' => 'Request is no longer available'], 400);
+        }
+        
+        // إنشاء أو تحديث العرض
+        $interest = Interest::updateOrCreate(
+            [
+                'request_id' => $serviceRequest->id,
+                'worker_id' => $user->id
+            ],
+            [
+                'price' => $validated['price'],
+                'duration' => $validated['duration'],
+                'message' => $validated['message'] ?? null,
+                'status' => 'pending'
+            ]
+        );
+        
+        // 🔥 إنشاء إشعار للعميل - الكود المعدل 🔥
+        $notification = Notification::create([
+            'user_id' => $serviceRequest->client_id,
+            'type' => 'worker_applied',
+            'title' => '📢 عامل مهتم بخدمتك',
+            'body' => "🔧 العامل {$user->first_name} {$user->last_name} قدم عرضاً لطلبك: {$serviceRequest->title} - {$validated['price']} درهم",
+            'data' => json_encode([
+                'request_id' => $serviceRequest->id,
+                'worker_id' => $user->id,
+                'worker_name' => $user->first_name . ' ' . $user->last_name,
+                'price' => $validated['price'],
+                'duration' => $validated['duration'],
+                'offer_message' => $validated['message'] ?? null
+            ]),
+            'action_url' => '/client/requests',
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Offer submitted successfully',
+            'data' => $interest,
+            'request_id' => $requestId
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('submitOffer error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
 }

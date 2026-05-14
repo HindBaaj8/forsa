@@ -1,5 +1,4 @@
 // services/realtime.js
-import { getEcho, initializeEcho, disconnectEcho } from './echo';
 import store from '../app/store';
 import { receiveMessage } from '../features/messages/messagesSlice';
 
@@ -7,98 +6,168 @@ class RealtimeManager {
   constructor() {
     this.subscriptions = new Map();
     this.userId = null;
+    this.token = null;
+    this.pollingIntervals = new Map();
+    this.notificationInterval = null;
   }
 
   initialize(userId, token) {
     console.log('🎬 RealtimeManager.initialize - userId:', userId);
+    console.log('⚠️ Using POLLING mode (WebSocket disabled)');
     this.userId = userId;
+    this.token = token;
     
-    if (!getEcho()) {
-      console.log('🔧 Echo not initialized, initializing...');
-      initializeEcho(token);
-    }
-    
-    this.setupUserChannel();
+    // بدء Polling للإشعارات
+    this.startNotificationPolling();
   }
 
-  setupUserChannel() {
-    if (!this.userId) return;
-    
-    const echo = getEcho();
-    if (!echo) {
-      console.warn('⚠️ Echo not available, skipping user channel');
-      return;
+  startNotificationPolling() {
+    if (this.notificationInterval) {
+      clearInterval(this.notificationInterval);
     }
     
-    console.log('📡 Setting up user channel for:', this.userId);
-    const channel = echo.private(`users.${this.userId}`);
-    channel.listen('NotificationSent', (event) => {
-      console.log('🔔 Notification received:', event);
-    });
+    console.log('📡 Starting notification polling every 30 seconds');
+    
+    // جلب الإشعارات أول مرة
+    this.fetchNotifications();
+    
+    // كل 30 ثانية
+    this.notificationInterval = setInterval(() => {
+      this.fetchNotifications();
+    }, 30000);
+  }
+
+  async fetchNotifications() {
+    if (!this.token) return;
+    
+    try {
+      const response = await fetch('/api/notifications/unread', {
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          console.log('🔔 New notifications:', data.length);
+          window.dispatchEvent(new CustomEvent('notification-sent', { 
+            detail: { notifications: data } 
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Notification polling error:', error);
+    }
   }
 
   subscribeToConversation(conversationId) {
-    const echo = getEcho();
-    if (!echo) {
-      console.warn('⚠️ Echo not available, cannot subscribe');
-      return null;
-    }
-    
     if (this.subscriptions.has(`conversation.${conversationId}`)) {
-      console.log('Already subscribed to conversation:', conversationId);
+      console.log('Already polling conversation:', conversationId);
       return this.subscriptions.get(`conversation.${conversationId}`);
     }
 
-    console.log('📡 Subscribing to conversation:', conversationId);
-    const channel = echo.private(`conversation.${conversationId}`);
+    console.log('📡 Starting conversation polling for:', conversationId);
     
-    channel.listen('.message.sent', (event) => {
-      console.log('💬 New message event:', event);
-      store.dispatch(receiveMessage({
-        conversationId: conversationId,
-        message: {
-          id: event.id,
-          message: event.message,
-          sender_id: event.sender_id,
-          created_at: event.created_at,
-          is_me: event.sender_id === this.userId,
-          is_read: false,
-        }
-      }));
-    });
+    // جلب الرسائل أول مرة
+    this.fetchMessages(conversationId);
+    
+    // كل 5 ثواني (أسرع للإشعارات الفورية)
+    const interval = setInterval(() => {
+      this.fetchMessages(conversationId);
+    }, 5000);
+    
+    this.subscriptions.set(`conversation.${conversationId}`, interval);
+    this.pollingIntervals.set(conversationId, interval);
+    
+    return interval;
+  }
 
-    this.subscriptions.set(`conversation.${conversationId}`, channel);
-    return channel;
+  async fetchMessages(conversationId) {
+    if (!this.token) return;
+    
+    try {
+      const response = await fetch(`/api/messages/${conversationId}/latest`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.messages && data.messages.length > 0) {
+          // إرسال آخر رسالة
+          const lastMessage = data.messages[data.messages.length - 1];
+          if (lastMessage && lastMessage.sender_id !== this.userId) {
+            store.dispatch(receiveMessage({
+              conversationId: conversationId,
+              message: {
+                id: lastMessage.id,
+                message: lastMessage.message,
+                sender_id: lastMessage.sender_id,
+                created_at: lastMessage.created_at,
+                is_me: lastMessage.sender_id === this.userId,
+                is_read: lastMessage.is_read || false,
+              }
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Message polling error:', error);
+    }
   }
 
   unsubscribeFromConversation(conversationId) {
-    const channelKey = `conversation.${conversationId}`;
-    const channel = this.subscriptions.get(channelKey);
-    if (channel) {
-      console.log('🔴 Unsubscribing from conversation:', conversationId);
-      channel.stopListening('.message.sent');
-      this.subscriptions.delete(channelKey);
+    const interval = this.subscriptions.get(`conversation.${conversationId}`);
+    if (interval) {
+      console.log('🔴 Stopping conversation polling for:', conversationId);
+      clearInterval(interval);
+      this.subscriptions.delete(`conversation.${conversationId}`);
+      this.pollingIntervals.delete(conversationId);
     }
   }
 
   sendTyping(conversationId, isTyping, userName) {
-    const channel = this.subscriptions.get(`conversation.${conversationId}`);
-    if (channel) {
-      channel.whisper('typing', {
-        user_id: this.userId,
-        user_name: userName,
-        typing: isTyping,
-      });
+    // Polling mode doesn't support typing indicator
+    // يمكنك إضافة API call إذا احتجت
+    console.log(`✍️ ${isTyping ? 'Started' : 'Stopped'} typing in conversation ${conversationId}`);
+    
+    // اختياري: إرسال typing indicator عبر API
+    if (this.token) {
+      fetch(`/api/messages/${conversationId}/typing`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_typing: isTyping })
+      }).catch(error => console.error('Typing error:', error));
     }
   }
 
   disconnect() {
-    console.log('🔴 Disconnecting all subscriptions');
-    this.subscriptions.forEach((_, key) => {
-      const conversationId = key.replace('conversation.', '');
-      this.unsubscribeFromConversation(conversationId);
+    console.log('🔴 Disconnecting all polling intervals');
+    
+    // إيقاف polling الإشعارات
+    if (this.notificationInterval) {
+      clearInterval(this.notificationInterval);
+      this.notificationInterval = null;
+    }
+    
+    // إيقاف جميع polling المحادثات
+    this.subscriptions.forEach((interval, key) => {
+      if (interval) {
+        clearInterval(interval);
+      }
     });
-    disconnectEcho();
+    this.subscriptions.clear();
+    this.pollingIntervals.clear();
+    
+    this.userId = null;
+    this.token = null;
   }
 }
 
