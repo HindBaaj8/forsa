@@ -1,6 +1,7 @@
+// components/admin/AdminSidebar.jsx
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { 
   LayoutDashboard, 
   Users, 
@@ -19,43 +20,77 @@ const menuItems = [
   { path: '/admin/users', icon: Users, label: 'المستخدمين' },
   { path: '/admin/requests', icon: ClipboardList, label: 'الطلبات' },
   { path: '/admin/workers', icon: Briefcase, label: 'العمال' },
-  { path: '/admin/categories', icon: Tags, label: 'الفئات' },
-  { path: '/admin/finance', icon: DollarSign, label: 'المالية' },
-  { path: '/admin/alerts', icon: Bell, label: 'الإشعارات' },
   { path: '/admin/settings', icon: Settings, label: 'الإعدادات' },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ sidebarOpen, setSidebarOpen }) {
   const navigate = useNavigate();
-  const location = useLocation();
+  const location = useLocation(); // ✅ نستعمل useLocation مباشرة
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/');
   };
 
+  const getInitials = () => {
+    if (!user) return 'أ';
+    return `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase() || 'أ';
+  };
+
+  const isActive = (path) => {
+    if (path === '/admin' && location.pathname === '/admin') return true;
+    if (path !== '/admin' && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+
   return (
-    <div className="sb-nav">
+    <div className={`sb-nav ${!sidebarOpen ? 'collapsed' : ''}`}>
+      <div className="sb-brand">
+        <div className="sb-brand-icon">👑</div>
+        {sidebarOpen && (
+          <div className="sb-brand-info">
+            <div className="sb-brand-name">Admin Panel</div>
+            <div className="sb-brand-sub">فرصة عمل</div>
+          </div>
+        )}
+        <button className="sb-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          {sidebarOpen ? '←' : '→'}
+        </button>
+      </div>
+
       <div className="sb-section-label">الرئيسية</div>
       {menuItems.map(item => {
         const Icon = item.icon;
         return (
           <button
             key={item.path}
-            className={`sb-item ${location.pathname === item.path ? 'active' : ''}`}
+            className={`sb-item ${isActive(item.path) ? 'active' : ''}`}
             onClick={() => navigate(item.path)}
           >
             <Icon size={18} className="sb-icon" />
-            <span>{item.label}</span>
+            {sidebarOpen && <span>{item.label}</span>}
           </button>
         );
       })}
+      
       <div className="sb-divider" />
+      
       <button className="sb-item" onClick={handleLogout}>
         <LogOut size={18} className="sb-icon" />
-        <span>تسجيل الخروج</span>
+        {sidebarOpen && <span>تسجيل الخروج</span>}
       </button>
+
+      {sidebarOpen && (
+        <div className="sb-user">
+          <div className="sb-user-av">{getInitials()}</div>
+          <div>
+            <div className="sb-user-name">{user?.first_name} {user?.last_name}</div>
+            <div className="sb-user-role">مدير النظام</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -210,14 +210,48 @@ Route::middleware(['auth:sanctum'])->prefix('worker')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
+    // Dashboard
+    Route::get('/stats', [AdminController::class, 'stats']);
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    
+    // Users
     Route::get('/users', [AdminController::class, 'users']);
-    Route::put('/users/{user}/ban', [AdminController::class, 'banUser']);
-    Route::put('/users/{user}/activate', [AdminController::class, 'activateUser']);
+    Route::post('/users/{user}/ban', [AdminController::class, 'banUser']);
+    Route::post('/users/{user}/activate', [AdminController::class, 'activateUser']);
+    Route::delete('/users/{user}', [AdminController::class, 'deleteUser']);
+    
+    // Workers
     Route::get('/workers', [AdminController::class, 'workers']);
-    Route::put('/workers/{worker}/approve', [AdminController::class, 'approveWorker']);
+    Route::post('/workers/{worker}/approve', [AdminController::class, 'approveWorker']);
+    Route::post('/workers/{worker}/ban', [AdminController::class, 'banWorker']);
+    Route::delete('/workers/{worker}', [AdminController::class, 'deleteWorker']);
+    
+    // ✅ أضف هذه routes الناقصة
+    Route::get('/requests', [AdminController::class, 'requests']);
+    Route::put('/requests/{id}/status', [AdminController::class, 'updateRequestStatus']);
+    Route::delete('/requests/{id}', [AdminController::class, 'deleteRequest']);
+    
+    // Categories
+    Route::get('/categories', [AdminController::class, 'categories']);
+    Route::post('/categories', [AdminController::class, 'storeCategory']);
+    Route::put('/categories/{category}', [AdminController::class, 'updateCategory']);
+    Route::delete('/categories/{category}', [AdminController::class, 'deleteCategory']);
+    Route::post('/categories/{category}/toggle', [AdminController::class, 'toggleCategory']);
+    
+    // Finance
     Route::get('/finance', [AdminController::class, 'finance']);
+    
+    // Alerts
+    Route::get('/alerts', [AdminController::class, 'alerts']);
+    Route::post('/alerts/{id}/resolve', [AdminController::class, 'resolveAlert']);
+    Route::delete('/alerts/{id}', [AdminController::class, 'deleteAlert']);
+    
+    // Reports
     Route::get('/reports', [AdminController::class, 'reports']);
+    Route::post('/reports/{id}/resolve', [AdminController::class, 'resolveReport']);
+    
+    // Pending Services
+    Route::get('/services/pending', [AdminController::class, 'pendingServices']);
 });
 
 //payament
