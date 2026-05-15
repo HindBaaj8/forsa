@@ -1,52 +1,19 @@
-// src/pages/admin/AdminApp.jsx
-import { useState } from 'react';
-import { useAdminData } from '../../hooks/useAdminData';
-import AdminDashboard from './AdminDashboard';
-import AdminUsers from './AdminUsers';
-import AdminRequests from './AdminRequests';
-import AdminWorkers from './AdminWorkers';
-import AdminCategories from './AdminCategories';
-import AdminFinance from './AdminFinance';
-import AdminSettings from './AdminSettings';
-import AdminAlerts from './AdminAlerts';
-// AdminChatModal هو مكون يستخدم داخل AdminRequests مش صفحة منفصلة
-// import AdminChatModal from './AdminMessages'; // ❌ إزالة هذا السطر
+// components/layout/AdminLayout.jsx
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import AdminSidebar from '../admin/AdminSidebar';
+import AdminTopbar from '../admin/AdminTopbar';
 
-export default function AdminApp() {
-  const [page, setPage] = useState("dashboard");
-  const { users, setUsers, requests, setRequests, workers, setWorkers, categories, setCategories } = useAdminData();
-
-  const usersCount = users.length;
-  const pendingRequestsCount = requests.filter(r => r.status === "pending").length;
-  const pendingWorkersCount = workers.filter(w => w.status === "pending").length;
-
-  const props = {
-    page, 
-    setPageState: setPage,
-    users, 
-    setUsers,
-    requests, 
-    setRequests,
-    workers, 
-    setWorkers,
-    categories, 
-    setCategories,
-    usersCount, 
-    pendingRequestsCount, 
-    pendingWorkersCount
-  };
-
+export default function AdminLayout({ children, title }) {
   return (
-    <>
-      {page === "dashboard" && <AdminDashboard {...props} />}
-      {page === "users" && <AdminUsers {...props} />}
-      {page === "requests" && <AdminRequests {...props} />}
-      {page === "workers" && <AdminWorkers {...props} />}
-      {page === "categories" && <AdminCategories {...props} />}
-      {page === "finance" && <AdminFinance {...props} />}
-      {page === "settings" && <AdminSettings {...props} />}
-      {page === "alerts" && <AdminAlerts {...props} />}
-      {/* AdminChatModal مش صفحة - هو مكون يستخدم داخل AdminRequests */}
-    </>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <AdminSidebar />
+      <div style={{ flex: 1 }}>
+        <AdminTopbar title={title} />
+        <div style={{ padding: '20px' }}>
+          {children || <Outlet />}  {/* ✅ مهم جداً */}
+        </div>
+      </div>
+    </div>
   );
 }

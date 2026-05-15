@@ -1,4 +1,4 @@
-// features/worker/workerSlice.js
+// src/features/worker/workerSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 import { updateUser } from '../auth/authSlice';
@@ -26,7 +26,7 @@ export const getWorkerServices = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/worker/services');
-      const services = response.data?.data || response.data || [];
+      const services = response.data?.services || [];
       return services;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to load services');
@@ -41,8 +41,7 @@ export const createService = createAsyncThunk(
       const response = await api.post('/services', serviceData);
       return response.data;
     } catch (error) {
-      const message = error.response?.data?.message || error.response?.data?.errors || 'Failed to create service';
-      return rejectWithValue(message);
+      return rejectWithValue(error.response?.data?.message || 'Failed to create service');
     }
   }
 );
@@ -84,7 +83,7 @@ export const toggleService = createAsyncThunk(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// ORDERS (طلبات العمال - Orders)
+// ORDERS
 // ═══════════════════════════════════════════════════════════════
 export const getWorkerOrders = createAsyncThunk(
   'worker/getOrders',
@@ -102,7 +101,7 @@ export const acceptOrder = createAsyncThunk(
   'worker/acceptOrder',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/worker/orders/${id}/accept`);
+      const response = await api.post(`/orders/${id}/accept`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to accept order');
@@ -114,7 +113,7 @@ export const rejectOrder = createAsyncThunk(
   'worker/rejectOrder',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/worker/orders/${id}/reject`);
+      const response = await api.post(`/orders/${id}/reject`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to reject order');
@@ -126,7 +125,7 @@ export const startOrder = createAsyncThunk(
   'worker/startOrder',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/worker/orders/${id}/start`);
+      const response = await api.post(`/orders/${id}/start`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to start order');
@@ -138,7 +137,7 @@ export const completeOrder = createAsyncThunk(
   'worker/completeOrder',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/worker/orders/${id}/complete`);
+      const response = await api.post(`/orders/${id}/complete`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to complete order');
@@ -150,7 +149,7 @@ export const cancelOrder = createAsyncThunk(
   'worker/cancelOrder',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/worker/orders/${id}/cancel`);
+      const response = await api.post(`/orders/${id}/cancel`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to cancel order');
@@ -159,46 +158,26 @@ export const cancelOrder = createAsyncThunk(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// REQUESTS (طلبات العملاء المتاحة - Available Requests)
+// REQUESTS (طلبات العملاء)
 // ═══════════════════════════════════════════════════════════════
-export const getAvailableRequests = createAsyncThunk(
-  'worker/getAvailableRequests',
+export const getWorkerRequests = createAsyncThunk(
+  'worker/getWorkerRequests',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/worker/requests');
-      return response.data;
+      console.log('📦 API Response getWorkerRequests:', response.data);
+      const requests = response.data?.requests || response.data?.data || [];
+      console.log('✅ Extracted requests:', requests.length);
+      return requests;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to load available requests');
-    }
-  }
-);
-
-export const acceptClientRequest = createAsyncThunk(
-  'worker/acceptClientRequest',
-  async (requestId, { rejectWithValue }) => {
-    try {
-      const response = await api.post(`/worker/requests/${requestId}/accept`);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to accept request');
-    }
-  }
-);
-
-export const rejectClientRequest = createAsyncThunk(
-  'worker/rejectClientRequest',
-  async (requestId, { rejectWithValue }) => {
-    try {
-      const response = await api.post(`/worker/requests/${requestId}/reject`);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to reject request');
+      console.error('❌ Error getWorkerRequests:', error);
+      return rejectWithValue(error.response?.data?.message || 'Failed to load requests');
     }
   }
 );
 
 export const submitOfferOnRequest = createAsyncThunk(
-  'worker/submitOffer',
+  'worker/submitOfferOnRequest',
   async ({ requestId, price, duration, message }, { rejectWithValue }) => {
     try {
       const response = await api.post(`/worker/requests/${requestId}/offer`, {
@@ -271,7 +250,7 @@ export const updateWorkerNotifications = createAsyncThunk(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// PROFILE & PASSWORD
+// PROFILE
 // ═══════════════════════════════════════════════════════════════
 export const updateWorkerProfile = createAsyncThunk(
   'worker/updateProfile',
@@ -301,23 +280,6 @@ export const updateWorkerProfile = createAsyncThunk(
   }
 );
 
-export const changePassword = createAsyncThunk(
-  'worker/changePassword',
-  async ({ current_password, new_password, new_password_confirmation }, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/auth/change-password', {
-        current_password,
-        new_password,
-        new_password_confirmation
-      });
-      return response.data;
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to change password';
-      return rejectWithValue(message);
-    }
-  }
-);
-
 // ═══════════════════════════════════════════════════════════════
 // INITIAL STATE
 // ═══════════════════════════════════════════════════════════════
@@ -334,7 +296,7 @@ const initialState = {
   },
   services: [],
   orders: [],
-  requests: [],        // ✅ طلبات العملاء المتاحة
+  requests: [],
   earnings: {
     stats: {
       totalEarnings: 0,
@@ -379,9 +341,7 @@ const workerSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // ═══════════════════════════════════════
       // DASHBOARD
-      // ═══════════════════════════════════════
       .addCase(getWorkerDashboard.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -394,10 +354,7 @@ const workerSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-
-      // ═══════════════════════════════════════
       // SERVICES
-      // ═══════════════════════════════════════
       .addCase(getWorkerServices.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -411,15 +368,9 @@ const workerSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(createService.fulfilled, (state, action) => {
-        state.isLoading = false;
         state.services.unshift(action.payload);
       })
-      .addCase(createService.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
-      })
       .addCase(updateService.fulfilled, (state, action) => {
-        state.isLoading = false;
         const index = state.services.findIndex(s => s.id === action.payload.id);
         if (index !== -1) state.services[index] = action.payload;
       })
@@ -430,17 +381,14 @@ const workerSlice = createSlice({
         const index = state.services.findIndex(s => s.id === action.payload.id);
         if (index !== -1) state.services[index] = action.payload;
       })
-
-      // ═══════════════════════════════════════
       // ORDERS
-      // ═══════════════════════════════════════
       .addCase(getWorkerOrders.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(getWorkerOrders.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.orders = action.payload?.data || action.payload || [];
+        state.orders = action.payload?.orders || action.payload?.data || [];
       })
       .addCase(getWorkerOrders.rejected, (state, action) => {
         state.isLoading = false;
@@ -465,37 +413,43 @@ const workerSlice = createSlice({
         const index = state.orders.findIndex(o => o.id === action.payload.id);
         if (index !== -1) state.orders[index] = action.payload;
       })
-
-      // ═══════════════════════════════════════
-      // REQUESTS (Available Requests)
-      // ═══════════════════════════════════════
-      .addCase(getAvailableRequests.pending, (state) => {
+      // REQUESTS (طلبات العملاء)
+      .addCase(getWorkerRequests.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(getAvailableRequests.fulfilled, (state, action) => {
+      .addCase(getWorkerRequests.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.requests = action.payload?.data || action.payload || [];
+        state.requests = Array.isArray(action.payload) ? action.payload : [];
+        console.log('✅ State requests updated:', state.requests.length);
       })
-      .addCase(getAvailableRequests.rejected, (state, action) => {
+      .addCase(getWorkerRequests.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+        state.requests = [];
       })
-      .addCase(acceptClientRequest.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.requests = state.requests.filter(r => r.id !== action.payload.request_id);
-      })
-      .addCase(rejectClientRequest.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.requests = state.requests.filter(r => r.id !== action.payload.request_id);
+      // SUBMIT OFFER
+      .addCase(submitOfferOnRequest.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
       })
       .addCase(submitOfferOnRequest.fulfilled, (state, action) => {
         state.isLoading = false;
+        const index = state.requests.findIndex(r => r.id === action.payload.request_id);
+        if (index !== -1) {
+          state.requests[index] = {
+            ...state.requests[index],
+            my_offer: action.payload,
+            status: 'offer_sent'
+          };
+        }
+        console.log('✅ Offer submitted successfully');
       })
-
-      // ═══════════════════════════════════════
+      .addCase(submitOfferOnRequest.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
       // EARNINGS
-      // ═══════════════════════════════════════
       .addCase(getWorkerEarnings.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -508,44 +462,22 @@ const workerSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-
-      // ═══════════════════════════════════════
       // SCHEDULE
-      // ═══════════════════════════════════════
-      .addCase(getWorkerSchedule.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
       .addCase(getWorkerSchedule.fulfilled, (state, action) => {
-        state.isLoading = false;
         state.schedule = action.payload || initialState.schedule;
-      })
-      .addCase(getWorkerSchedule.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload;
       })
       .addCase(updateScheduleStatus.fulfilled, (state, action) => {
         const index = state.schedule.appointments.findIndex(a => a.id === action.payload.id);
         if (index !== -1) state.schedule.appointments[index] = action.payload;
       })
-
-      // ═══════════════════════════════════════
       // PROFILE
-      // ═══════════════════════════════════════
       .addCase(updateWorkerProfile.fulfilled, (state, action) => {
         state.profile = action.payload;
       })
-      .addCase(changePassword.fulfilled, (state) => {
-        state.isLoading = false;
-      })
-      .addCase(changePassword.rejected, (state, action) => {
-        state.isLoading = false;
+      .addCase(updateWorkerProfile.rejected, (state, action) => {
         state.error = action.payload;
       })
-
-      // ═══════════════════════════════════════
       // NOTIFICATIONS
-      // ═══════════════════════════════════════
       .addCase(updateWorkerNotifications.fulfilled, (state, action) => {
         state.notifications = action.payload || state.notifications;
       });

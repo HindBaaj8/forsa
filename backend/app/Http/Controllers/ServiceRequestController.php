@@ -34,7 +34,7 @@ class ServiceRequestController extends Controller
             'category_id' => 'required|exists:categories,id',
             'title' => 'required|string|max:255',
             'description' => 'required|string',
-            'budget' => 'required|numeric|min:0',
+            'budget' => 'required|numeric|min:1|max:99999999',
             'city' => 'required|string',
             'visibility' => 'sometimes|in:public,workers_only',
         ]);
@@ -52,7 +52,48 @@ class ServiceRequestController extends Controller
 
         return response()->json($serviceRequest, 201);
     }
+    // أضف هاد الدالة فـ ServiceRequestController.php
 
+public function accept($id)
+{
+    try {
+        $user = auth()->user();
+        $request = ServiceRequest::findOrFail($id);
+        
+        if ($user->role !== 'worker') {
+            return response()->json(['message' => 'Only workers can accept requests'], 403);
+        }
+        
+        if ($request->status !== 'pending') {
+            return response()->json(['message' => 'Request is no longer pending'], 400);
+        }
+        
+        // ✅ تغيير الحالة إلى accepted (قيد التنفيذ)
+        $request->update([
+            'status' => 'accepted',
+            'accepted_by' => $user->id,
+            'accepted_at' => now()
+        ]);
+        
+        // ✅ إنشاء إشعار للعميل
+        Notification::create([
+            'user_id' => $request->client_id,
+            'type' => 'request_accepted',
+            'title' => '✅ تم قبول طلبك',
+            'message' => "المهني {$user->first_name} {$user->last_name} قبل طلبك: {$request->title}",
+            'link' => '/client/requests'
+        ]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Request accepted successfully',
+            'data' => $request
+        ]);
+        
+    } catch (\Exception $e) {
+        return response()->json(['message' => $e->getMessage()], 500);
+    }
+}
     public function update(Request $request, ServiceRequest $serviceRequest)
     {
         if ($serviceRequest->client_id !== auth()->id()) {

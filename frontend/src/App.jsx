@@ -1,3 +1,4 @@
+// src/App.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -14,6 +15,9 @@ import './styles/Navbar.css';
 import Home from './pages/Home';
 import Auth from './components/auth/Auth';
 import NotificationsPage from './pages/NotificationsPage';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
+import OtpLogin from './components/auth/OtpLogin';
 
 // Admin
 import AdminApp from './pages/AdminApp';
@@ -46,7 +50,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const userRole = useSelector(selectUserRole);
 
   if (!isAuthenticated) {
-    return <Navigate to="/auth?mode=login" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(userRole)) {
@@ -58,22 +62,31 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 function App() {
   useRealtime();
+  
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* ========== PUBLIC ROUTES ========== */}
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/otp" element={<OtpLogin />} />
       <Route path="/notifications" element={<NotificationsPage />} />
 
-      {/* Admin Routes */}
+      {/* ========== ADMIN ROUTES ========== */}
       <Route path="/admin/*" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminApp />
         </ProtectedRoute>
       } />
 
-      {/* Client Routes */}
+      {/* ========== CLIENT ROUTES ========== */}
       <Route path="/client" element={
+        <ProtectedRoute allowedRoles={['client']}>
+          <ClientDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/client/dashboard" element={
         <ProtectedRoute allowedRoles={['client']}>
           <ClientDashboard />
         </ProtectedRoute>
@@ -114,8 +127,13 @@ function App() {
         </ProtectedRoute>
       } />
 
-      {/* Worker Routes */}
+      {/* ========== WORKER ROUTES ========== */}
       <Route path="/worker" element={
+        <ProtectedRoute allowedRoles={['worker']}>
+          <WorkerDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/worker/dashboard" element={
         <ProtectedRoute allowedRoles={['worker']}>
           <WorkerDashboard />
         </ProtectedRoute>
@@ -155,8 +173,6 @@ function App() {
           <WorkerSettings />
         </ProtectedRoute>
       } />
-      
-      {/* ✅ Worker Extra Routes */}
       <Route path="/worker/change-password" element={
         <ProtectedRoute allowedRoles={['worker']}>
           <WorkerChangePassword />
@@ -168,7 +184,7 @@ function App() {
         </ProtectedRoute>
       } />
 
-      {/* Fallback */}
+      {/* ========== FALLBACK ROUTE ========== */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

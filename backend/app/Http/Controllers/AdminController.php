@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Category;
 use App\Models\Report;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -18,29 +19,61 @@ class AdminController extends Controller
         $this->middleware('role:admin');
     }
 
+    /**
+     * Dashboard statistics
+     */
     public function dashboard()
     {
         $stats = [
             'totalUsers' => User::count(),
             'totalWorkers' => User::where('role', 'worker')->count(),
             'totalClients' => User::where('role', 'client')->count(),
-            'totalServices' => Service::where('approval_status', 'approved')->count(),
+            'totalServices' => Service::count(),
             'totalRequests' => ServiceRequest::count(),
             'pendingRequests' => ServiceRequest::where('status', 'pending')->count(),
             'completedOrders' => Order::where('status', 'completed')->count(),
-            'totalRevenue' => Order::where('status', 'completed')->sum('agreed_price'),
+            'totalRevenue' => Order::where('status', 'completed')->sum('agreed_price') ?? 0,
         ];
 
-        $recentUsers = User::latest()->take(5)->get();
-        $recentRequests = ServiceRequest::with('client')->latest()->take(5)->get();
+        $recentUsers = User::latest()->take(5)->get()->map(function($user) {
+            return [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'status' => $user->status,
+                'created_at' => $user->created_at,
+            ];
+        });
+
+        $recentRequests = ServiceRequest::with('client')
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function($request) {
+                return [
+                    'id' => $request->id,
+                    'title' => $request->title,
+                    'client_name' => $request->client?->first_name . ' ' . $request->client?->last_name,
+                    'status' => $request->status,
+                    'budget' => $request->budget,
+                    'city' => $request->city,
+                    'created_at' => $request->created_at,
+                ];
+            });
 
         return response()->json([
+            'success' => true,
             'stats' => $stats,
             'recentUsers' => $recentUsers,
             'recentRequests' => $recentRequests,
         ]);
     }
 
+    /**
+     * Get all users
+     */
     public function users(Request $request)
     {
         $query = User::query();
@@ -61,102 +94,68 @@ class AdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $users = $query->latest()->paginate(10);
-        return response()->json($users);
+        $users = $query->latest()->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $users
+        ]);
     }
 
+    /**
+     * Ban user
+     */
     public function banUser(User $user)
     {
         $user->update(['status' => 'blocked']);
-        return response()->json(['message' => 'User banned']);
+        return response()->json(['success' => true, 'data' => $user]);
     }
 
+    /**
+     * Activate user
+     */
     public function activateUser(User $user)
     {
         $user->update(['status' => 'active']);
-        return response()->json(['message' => 'User activated']);
+        return response()->json(['success' => true, 'data' => $user]);
     }
 
-    public function workers(Request $request)
+    /**
+     * Get all workers
+     */
+    public function workers()
     {
-        $query = User::where('role', 'worker');
-
-        if ($request->has('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
-        }
-
-        $workers = $query->latest()->paginate(9);
-        return response()->json($workers);
+        $workers = User::where('role', 'worker')->latest()->get();
+        return response()->json(['success' => true, 'data' => $workers]);
     }
 
-    public function approveWorker(User $worker)
+    /**
+     * Get all requests
+     */
+    public function requests()
     {
-        if ($worker->role !== 'worker') {
-            return response()->json(['message' => 'User is not a worker'], 422);
-        }
-
-        $worker->update(['status' => 'active']);
-        return response()->json(['message' => 'Worker approved']);
+        $requests = ServiceRequest::with('client', 'category')->latest()->get();
+        return response()->json(['success' => true, 'data' => $requests]);
     }
 
+    /**
+     * Get all categories
+     */
     public function categories()
     {
-        $categories = Category::withCount(['services', 'requests'])->get();
-        return response()->json(['categories' => $categories]);
+        $categories = Category::withCount('services')->get();
+        return response()->json(['success' => true, 'data' => $categories]);
     }
 
-    public function storeCategory(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'icon' => 'nullable|string',
-        ]);
-
-        $slug = \Str::slug($validated['name']);
-        $category = Category::create([
-            'name' => $validated['name'],
-            'slug' => $slug,
-            'icon' => $validated['icon'] ?? null,
-            'is_active' => true,
-        ]);
-
-        return response()->json($category, 201);
-    }
-
-    public function updateCategory(Request $request, Category $category)
-    {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'icon' => 'nullable|string',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
-        if (isset($validated['name'])) {
-            $validated['slug'] = \Str::slug($validated['name']);
-        }
-
-        $category->update($validated);
-        return response()->json($category);
-    }
-
-    public function deleteCategory(Category $category)
-    {
-        $category->delete();
-        return response()->json(['message' => 'Category deleted']);
-    }
-
-    public function toggleCategory(Category $category)
-    {
-        $category->update(['is_active' => !$category->is_active]);
-        return response()->json($category);
-    }
-
+    /**
+     * Finance statistics
+     */
     public function finance()
     {
         $stats = [
-            'totalRevenue' => Order::where('status', 'completed')->sum('agreed_price'),
-            'paidToWorkers' => 0, // Will be calculated from payments
-            'netProfit' => 0, // Will be calculated
+            'totalRevenue' => Order::where('status', 'completed')->sum('agreed_price') ?? 0,
+            'paidToWorkers' => 0,
+            'netProfit' => 0,
             'todayTransactions' => Order::whereDate('created_at', today())->count(),
         ];
 
@@ -168,40 +167,21 @@ class AdminController extends Controller
             ->map(function($order) {
                 return [
                     'id' => $order->id,
-                    'description' => $order->request->title,
-                    'client_name' => $order->client->full_name,
-                    'worker_name' => $order->worker->full_name,
+                    'description' => $order->request->title ?? 'Service',
+                    'client_name' => $order->client->first_name . ' ' . $order->client->last_name,
+                    'worker_name' => $order->worker->first_name . ' ' . $order->worker->last_name,
                     'amount' => $order->agreed_price,
                     'type' => 'in',
                     'method' => 'stripe',
-                    'date' => $order->completed_at->format('Y-m-d'),
+                    'date' => $order->created_at->format('Y-m-d'),
                     'status' => 'completed',
                 ];
             });
 
         return response()->json([
+            'success' => true,
             'stats' => $stats,
             'transactions' => $transactions,
         ]);
-    }
-
-    public function alerts()
-    {
-        // This will be implemented with notifications table
-        $alerts = [];
-
-        return response()->json(['alerts' => $alerts]);
-    }
-
-    public function markAlertRead($id)
-    {
-        // This will be implemented with notifications table
-        return response()->json(['message' => 'Alert marked as read']);
-    }
-
-    public function deleteAlert($id)
-    {
-        // This will be implemented with notifications table
-        return response()->json(['message' => 'Alert deleted']);
     }
 }

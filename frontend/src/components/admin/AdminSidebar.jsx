@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import { logout } from '../../features/auth/authSlice';
 
+// components/admin/AdminSidebar.jsx
 const menuItems = [
-  { path: '/admin', icon: LayoutDashboard, label: 'لوحة التحكم' },
+  { path: '/admin/dashboard', icon: LayoutDashboard, label: 'لوحة التحكم' },
   { path: '/admin/users', icon: Users, label: 'المستخدمين' },
   { path: '/admin/requests', icon: ClipboardList, label: 'الطلبات' },
   { path: '/admin/workers', icon: Briefcase, label: 'العمال' },
@@ -23,6 +24,7 @@ const menuItems = [
   { path: '/admin/finance', icon: DollarSign, label: 'المالية' },
   { path: '/admin/alerts', icon: Bell, label: 'الإشعارات' },
   { path: '/admin/settings', icon: Settings, label: 'الإعدادات' },
+  { path: '/admin/messages', icon: MessageCircle, label: 'الرسائل' },
 ];
 
 export default function AdminSidebar() {

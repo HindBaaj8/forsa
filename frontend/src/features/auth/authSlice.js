@@ -1,3 +1,4 @@
+// src/features/auth/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
@@ -55,7 +56,7 @@ export const getCurrentUser = createAsyncThunk(
   }
 );
 
-// 🔥🔥🔥 Update Profile - التصحيح 🔥🔥🔥
+// 🔥 Update Profile
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (profileData, { rejectWithValue }) => {
@@ -70,10 +71,8 @@ export const updateProfile = createAsyncThunk(
         config.headers['Content-Type'] = 'application/json';
       }
       
-      // ✅ استعمل PUT بدل POST
       const response = await api.put('/auth/me', profileData, config);
       
-      // ✅ تحديث localStorage
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
       const updatedUser = response.data.user || response.data.data || response.data;
       const newUser = { ...currentUser, ...updatedUser };
@@ -105,11 +104,103 @@ export const changePassword = createAsyncThunk(
   }
 );
 
+// ========== EMAIL VERIFICATION ==========
+
+// إرسال رمز التحقق
+export const sendVerificationCode = createAsyncThunk(
+  'auth/sendVerificationCode',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/send-verification-code', { email });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to send verification code');
+    }
+  }
+);
+
+// التحقق من الرمز
+export const verifyCode = createAsyncThunk(
+  'auth/verifyCode',
+  async ({ email, code }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/verify-code', { email, code });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Invalid verification code');
+    }
+  }
+);
+
+// إعادة إرسال الرمز
+export const resendVerificationCode = createAsyncThunk(
+  'auth/resendVerificationCode',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/resend-verification-code', { email });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to resend code');
+    }
+  }
+);
+
+// ========== FORGOT PASSWORD ==========
+
+// إرسال رابط إعادة تعيين كلمة المرور
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async (email, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to send reset link');
+    }
+  }
+);
+
+// إعادة تعيين كلمة المرور
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async ({ email, token, password, password_confirmation }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/reset-password', {
+        email,
+        token,
+        password,
+        password_confirmation
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reset password');
+    }
+  }
+);
+
+// ========== SOCIAL LOGIN (Google) ==========
+
+// تسجيل الدخول بـ Google
+export const googleLogin = createAsyncThunk(
+  'auth/googleLogin',
+  async (token, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/auth/google', { token });
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Google login failed');
+    }
+  }
+);
+
 const initialState = {
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token') || null,
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
+  isEmailVerified: false,
   error: null,
 };
 
@@ -121,15 +212,16 @@ const authSlice = createSlice({
       state.error = null;
     },
     updateUser: (state, action) => {
-      // ✅ تحديث user في Redux state
       state.user = { ...state.user, ...action.payload };
-      // ✅ تحديث localStorage
       localStorage.setItem('user', JSON.stringify(state.user));
     },
     setUser: (state, action) => {
       state.user = action.payload;
       state.isAuthenticated = true;
       localStorage.setItem('user', JSON.stringify(action.payload));
+    },
+    clearVerification: (state) => {
+      state.isEmailVerified = false;
     },
   },
   extraReducers: (builder) => {
@@ -182,7 +274,6 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload.user || action.payload.data || action.payload;
         state.isAuthenticated = true;
-        // ✅ تحديث localStorage
         if (state.user) {
           localStorage.setItem('user', JSON.stringify(state.user));
         }
@@ -192,17 +283,15 @@ const authSlice = createSlice({
         state.error = action.payload;
       })
       
-      // 🔥 Update Profile - يتغير الـ Sidebar تلقائياً
+      // Update Profile
       .addCase(updateProfile.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
-        // استخراج المستخدم المحدث من الـ response
         const updatedUser = action.payload.user || action.payload.data || action.payload;
         state.user = { ...state.user, ...updatedUser };
-        // ✅ تحديث localStorage
         localStorage.setItem('user', JSON.stringify(state.user));
       })
       .addCase(updateProfile.rejected, (state, action) => {
@@ -221,9 +310,88 @@ const authSlice = createSlice({
       .addCase(changePassword.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
+      })
+      
+      // ========== EMAIL VERIFICATION ==========
+      .addCase(sendVerificationCode.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(sendVerificationCode.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(sendVerificationCode.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      .addCase(verifyCode.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(verifyCode.fulfilled, (state) => {
+        state.isLoading = false;
+        state.isEmailVerified = true;
+      })
+      .addCase(verifyCode.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      .addCase(resendVerificationCode.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resendVerificationCode.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(resendVerificationCode.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // ========== FORGOT PASSWORD ==========
+      .addCase(forgotPassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      .addCase(resetPassword.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.isLoading = false;
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // ========== SOCIAL LOGIN ==========
+      .addCase(googleLogin.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(googleLogin.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+      })
+      .addCase(googleLogin.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { clearError, updateUser, setUser } = authSlice.actions;
+export const { clearError, updateUser, setUser, clearVerification } = authSlice.actions;
 export default authSlice.reducer;

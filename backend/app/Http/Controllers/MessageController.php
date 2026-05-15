@@ -41,7 +41,13 @@ class MessageController extends Controller
         ]);
 
         $conversation->update(['last_message_at' => now()]);
-
+        $otherUserId = auth()->id() === $conversation->client_id 
+        ? $conversation->worker_id 
+        : $conversation->client_id;
+    
+    $senderName = auth()->user()->first_name . ' ' . auth()->user()->last_name;
+    
+    broadcast(new \App\Events\MessageSent($message, $conversation->id, auth()->id(), $senderName));
         return response()->json($message, 201);
     }
 
@@ -60,17 +66,26 @@ class MessageController extends Controller
         return response()->json(['message' => 'Message marked as read']);
     }
 
-    public function markAllAsRead(Conversation $conversation)
-    {
+    // app/Http/Controllers/MessageController.php
+
+public function markAllAsRead(Conversation $conversation)
+{
+    try {
         if (!in_array(auth()->id(), [$conversation->client_id, $conversation->worker_id])) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // ✅ تحديث الرسائل غير المقروءة بطريقة آمنة
         $conversation->messages()
             ->where('sender_id', '!=', auth()->id())
             ->where('is_read', false)
-            ->update(['is_read' => true, 'read_at' => now()]);
+            ->update(['is_read' => true]);
 
         return response()->json(['message' => 'All messages marked as read']);
+        
+    } catch (\Exception $e) {
+        \Log::error('Mark all as read error: ' . $e->getMessage());
+        return response()->json(['message' => 'Server error: ' . $e->getMessage()], 500);
     }
+}
 }

@@ -1,11 +1,14 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\Service;
 use App\Models\ServiceRequest;
 use App\Models\Interest;
 use App\Models\User;
 use App\Models\Notification;
+use App\Models\Order;
+use App\Models\Conversation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -28,23 +31,24 @@ class WorkerController extends Controller
             
             $stats = [
                 'totalEarnings' => 0,
-                'totalServices' => $user->services()->count(),
-                'completedOrders' => $user->ordersAsWorker()->where('status', 'completed')->count(),
+                'totalServices' => Service::where('worker_id', $user->id)->count(),
+                'completedOrders' => Order::where('worker_id', $user->id)->where('status', 'completed')->count(),
                 'rating' => $user->rating ?? 0,
             ];
             
-            $recentOrders = $user->ordersAsWorker()
+            $recentOrders = Order::where('worker_id', $user->id)
                 ->with('service', 'client')
                 ->latest()
                 ->take(5)
                 ->get();
                 
-            $upcomingAppointments = $user->ordersAsWorker()
+            $upcomingAppointments = Order::where('worker_id', $user->id)
                 ->whereIn('status', ['accepted', 'in_progress'])
                 ->with('service', 'client')
                 ->get();
             
             return response()->json([
+                'success' => true,
                 'stats' => $stats,
                 'recentOrders' => $recentOrders,
                 'upcomingAppointments' => $upcomingAppointments
@@ -52,27 +56,35 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Dashboard error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
     /**
      * جلب خدمات المهني
      */
-    public function services(Request $request)
+    public function services()
     {
         try {
-            $services = Service::where('worker_id', auth()->id())
+            $user = Auth::user();
+            
+            $services = Service::where('worker_id', $user->id)
                 ->with('category')
                 ->latest()
-                ->paginate(10);
+                ->get();
 
             return response()->json([
                 'success' => true,
-                'data' => $services
+                'services' => $services,
+                'total' => $services->count()
             ]);
+            
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
+            Log::error('Services error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -83,19 +95,19 @@ class WorkerController extends Controller
     {
         try {
             $user = Auth::user();
-            $orders = $user->ordersAsWorker()
+            $orders = Order::where('worker_id', $user->id)
                 ->with('service', 'client')
                 ->latest()
                 ->get();
             
             return response()->json([
                 'success' => true,
-                'data' => $orders
+                'orders' => $orders
             ]);
             
         } catch (\Exception $e) {
             Log::error('Orders error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -110,46 +122,45 @@ class WorkerController extends Controller
             $stats = [
                 'totalEarnings' => 0,
                 'monthlyEarnings' => 0,
-                'completedOrders' => $user->ordersAsWorker()->where('status', 'completed')->count(),
+                'completedOrders' => Order::where('worker_id', $user->id)->where('status', 'completed')->count(),
                 'pendingAmount' => 0,
             ];
             
-            $transactions = $user->paymentsAsWorker()
-                ->with('order')
-                ->latest()
-                ->get();
+            $transactions = [];
             
             return response()->json([
+                'success' => true,
                 'stats' => $stats,
                 'transactions' => $transactions
             ]);
             
         } catch (\Exception $e) {
             Log::error('Earnings error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
     /**
      * جلب جدول المواعيد
      */
-    public function schedule(Request $request)
+    public function schedule()
     {
         try {
             $user = Auth::user();
             
-            $appointments = $user->ordersAsWorker()
+            $appointments = Order::where('worker_id', $user->id)
                 ->whereIn('status', ['accepted', 'in_progress'])
                 ->with('service', 'client')
                 ->get();
             
             return response()->json([
+                'success' => true,
                 'appointments' => $appointments
             ]);
             
         } catch (\Exception $e) {
             Log::error('Schedule error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -167,7 +178,7 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Update schedule error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -177,11 +188,14 @@ class WorkerController extends Controller
     public function profile()
     {
         try {
-            return response()->json(Auth::user());
+            return response()->json([
+                'success' => true,
+                'data' => Auth::user()
+            ]);
             
         } catch (\Exception $e) {
             Log::error('Profile error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -199,13 +213,8 @@ class WorkerController extends Controller
                 'phone' => 'sometimes|string|max:20',
                 'city' => 'sometimes|string|max:255',
                 'bio' => 'nullable|string|max:1000',
-                'avatar' => 'nullable|image|max:2048',
+                'avatar' => 'nullable|string|max:2048',
             ]);
-            
-            if ($request->hasFile('avatar')) {
-                $path = $request->file('avatar')->store('avatars', 'public');
-                $validated['avatar'] = $path;
-            }
             
             $user->update($validated);
             
@@ -217,7 +226,7 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Update profile error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -240,7 +249,7 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Update notifications error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -251,10 +260,10 @@ class WorkerController extends Controller
     {
         try {
             $user = Auth::user();
-            $order = \App\Models\Order::findOrFail($orderId);
+            $order = Order::findOrFail($orderId);
             
             if ($order->worker_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
             
             $order->update(['status' => 'accepted']);
@@ -267,7 +276,7 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Accept order error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -278,10 +287,10 @@ class WorkerController extends Controller
     {
         try {
             $user = Auth::user();
-            $order = \App\Models\Order::findOrFail($orderId);
+            $order = Order::findOrFail($orderId);
             
             if ($order->worker_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
             
             $order->update(['status' => 'rejected']);
@@ -294,7 +303,7 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Reject order error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -305,10 +314,10 @@ class WorkerController extends Controller
     {
         try {
             $user = Auth::user();
-            $order = \App\Models\Order::findOrFail($orderId);
+            $order = Order::findOrFail($orderId);
             
             if ($order->worker_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
             
             $order->update(['status' => 'in_progress']);
@@ -321,7 +330,7 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Start order error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
@@ -332,10 +341,10 @@ class WorkerController extends Controller
     {
         try {
             $user = Auth::user();
-            $order = \App\Models\Order::findOrFail($orderId);
+            $order = Order::findOrFail($orderId);
             
             if ($order->worker_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
             
             $order->update(['status' => 'completed']);
@@ -348,23 +357,23 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Complete order error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
     /**
-     * 🔥 جلب الطلبات المتاحة للمهني (طلبات العملاء)
+     * جلب الطلبات المتاحة للمهني (طلبات العملاء)
      */
     public function getAvailableRequests()
     {
         try {
             $user = Auth::user();
             
-            if (!$user || $user->role !== 'worker') {
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized - Worker only'
-                ], 403);
+                    'message' => 'Unauthorized'
+                ], 401);
             }
             
             $requests = ServiceRequest::with(['client', 'category'])
@@ -372,16 +381,9 @@ class WorkerController extends Controller
                 ->latest()
                 ->get();
             
-            foreach ($requests as $request) {
-                $hasOffer = Interest::where('request_id', $request->id)
-                    ->where('worker_id', $user->id)
-                    ->exists();
-                $request->has_offer = $hasOffer;
-            }
-            
             return response()->json([
                 'success' => true,
-                'data' => $requests,
+                'requests' => $requests,
                 'total' => $requests->count()
             ]);
             
@@ -395,73 +397,99 @@ class WorkerController extends Controller
     }
 
     /**
-     * 🔥 قبول طلب من عميل (Request)
+     * قبول طلب من عميل (Request)
      */
     public function acceptRequest($requestId)
     {
         try {
             $user = Auth::user();
             
-            if ($user->role !== 'worker') {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            
             $serviceRequest = ServiceRequest::findOrFail($requestId);
             
             if ($serviceRequest->status !== 'pending') {
-                return response()->json(['message' => 'Request cannot be accepted'], 400);
+                return response()->json(['success' => false, 'message' => 'Request cannot be accepted'], 400);
             }
             
-            $interest = Interest::create([
-                'request_id' => $serviceRequest->id,
+            // ✅ تحديث حالة الطلب إلى accepted
+            $serviceRequest->update([
+                'status' => 'accepted',
+                'accepted_by' => $user->id,
+                'accepted_at' => now()
+            ]);
+            
+            // ✅ إنشاء محادثة بين العميل والعامل
+            $conversation = Conversation::firstOrCreate([
+                'client_id' => $serviceRequest->client_id,
                 'worker_id' => $user->id,
-                'status' => 'pending',
-                'message' => 'I would like to work on this request'
+            ]);
+            
+            // ✅ إنشاء إشعار للعميل
+            Notification::create([
+                'user_id' => $serviceRequest->client_id,
+                'type' => 'request_accepted',
+                'title' => '✅ تم قبول طلبك',
+                'message' => "المهني {$user->first_name} {$user->last_name} قبل طلبك: {$serviceRequest->title}",
+                'link' => '/client/requests',
+                'is_read' => false
             ]);
             
             return response()->json([
                 'success' => true,
                 'message' => 'Request accepted successfully',
-                'data' => $interest
+                'data' => $serviceRequest
             ]);
             
         } catch (\Exception $e) {
             Log::error('acceptRequest error: ' . $e->getMessage());
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * 🔥 رفض طلب من عميل (Request)
+     * رفض طلب من عميل (Request)
      */
     public function rejectRequest($requestId)
     {
         try {
             $user = Auth::user();
             
-            if ($user->role !== 'worker') {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            
             $serviceRequest = ServiceRequest::findOrFail($requestId);
             
-            Interest::where('request_id', $serviceRequest->id)
-                ->where('worker_id', $user->id)
-                ->delete();
+            if ($serviceRequest->status !== 'pending') {
+                return response()->json(['success' => false, 'message' => 'Request cannot be rejected'], 400);
+            }
+            
+            // ✅ تحديث حالة الطلب إلى rejected
+            $serviceRequest->update([
+                'status' => 'rejected',
+                'rejected_by' => $user->id,
+                'rejected_at' => now()
+            ]);
+            
+            // ✅ إنشاء إشعار للعميل
+            Notification::create([
+                'user_id' => $serviceRequest->client_id,
+                'type' => 'request_rejected',
+                'title' => '❌ تم رفض طلبك',
+                'message' => "المهني {$user->first_name} {$user->last_name} رفض طلبك: {$serviceRequest->title}",
+                'link' => '/client/requests',
+                'is_read' => false
+            ]);
             
             return response()->json([
                 'success' => true,
-                'message' => 'Request rejected'
+                'message' => 'Request rejected successfully',
+                'data' => $serviceRequest
             ]);
             
         } catch (\Exception $e) {
             Log::error('rejectRequest error: ' . $e->getMessage());
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * 🔥 تقديم عرض على طلب مع إرسال إشعار للعميل
+     * تقديم عرض على طلب مع إرسال إشعار للعميل
      */
     public function submitOffer(Request $request, $requestId)
     {
@@ -474,14 +502,10 @@ class WorkerController extends Controller
             
             $user = Auth::user();
             
-            if ($user->role !== 'worker') {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            
             $serviceRequest = ServiceRequest::findOrFail($requestId);
             
             if ($serviceRequest->status !== 'pending') {
-                return response()->json(['message' => 'Request is no longer available'], 400);
+                return response()->json(['success' => false, 'message' => 'Request is no longer available'], 400);
             }
             
             // إنشاء أو تحديث العرض
@@ -498,23 +522,27 @@ class WorkerController extends Controller
                 ]
             );
             
-            // 🔥🔥🔥 إنشاء إشعار للعميل 🔥🔥🔥
-            Notification::create([
-                'user_id' => $serviceRequest->client_id,
-                'type' => 'worker_applied',
-                'title' => '📢 عامل مهتم بخدمتك',
-                'message' => "🔧 العامل {$user->first_name} {$user->last_name} قدم عرضاً لطلبك: {$serviceRequest->title} - {$validated['price']} درهم",
-                'data' => json_encode([
-                    'request_id' => $serviceRequest->id,
-                    'worker_id' => $user->id,
-                    'worker_name' => $user->first_name . ' ' . $user->last_name,
-                    'price' => $validated['price'],
-                    'duration' => $validated['duration'],
-                    'offer_message' => $validated['message'] ?? null
-                ]),
-                'link' => '/client/requests',
-                'is_read' => false
-            ]);
+            // إنشاء إشعار للعميل
+            try {
+                Notification::create([
+                    'user_id' => $serviceRequest->client_id,
+                    'type' => 'worker_applied',
+                    'title' => '📢 عامل مهتم بخدمتك',
+                    'message' => "🔧 العامل {$user->first_name} {$user->last_name} قدم عرضاً لطلبك: {$serviceRequest->title} - {$validated['price']} درهم",
+                    'data' => json_encode([
+                        'request_id' => $serviceRequest->id,
+                        'worker_id' => $user->id,
+                        'worker_name' => $user->first_name . ' ' . $user->last_name,
+                        'price' => $validated['price'],
+                        'duration' => $validated['duration'],
+                        'offer_message' => $validated['message'] ?? null
+                    ]),
+                    'link' => '/client/requests',
+                    'is_read' => false
+                ]);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to create notification: ' . $e->getMessage());
+            }
             
             return response()->json([
                 'success' => true,

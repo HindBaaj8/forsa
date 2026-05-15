@@ -60,16 +60,18 @@ export default function Sidebar({ role, onClose }) {
     { path: '/client/settings', icon: Settings, label: 'الإعدادات' },
   ];
 
-  const workerMenus = [
-    { path: '/worker', icon: LayoutDashboard, label: 'الرئيسية' },
-    { path: '/worker/services', icon: ShoppingBag, label: 'خدماتي' },
-    { path: '/worker/orders', icon: Package, label: 'الطلبات' },
-    { path: '/worker/messages', icon: MessageCircle, label: 'الرسائل' },
-    { path: '/worker/earnings', icon: DollarSign, label: 'الأرباح' },
-    { path: '/worker/schedule', icon: Calendar, label: 'جدول المواعيد' },
-    { path: '/worker/profile', icon: User, label: 'الملف الشخصي' },
-    { path: '/worker/settings', icon: Settings, label: 'الإعدادات' },
-  ];
+  // components/layout/Sidebar.jsx
+
+const workerMenus = [
+  { path: '/worker', icon: LayoutDashboard, label: 'الرئيسية' },
+  { path: '/worker/services', icon: ShoppingBag, label: 'خدماتي' },
+  { path: '/worker/orders', icon: Package, label: 'طلبات العملاء' },  // ✅ تأكد
+  { path: '/worker/messages', icon: MessageCircle, label: 'الرسائل' },  // ✅ تأكد
+  { path: '/worker/earnings', icon: DollarSign, label: 'الأرباح' },
+  { path: '/worker/schedule', icon: Calendar, label: 'جدول المواعيد' },
+  { path: '/worker/profile', icon: User, label: 'الملف الشخصي' },
+  { path: '/worker/settings', icon: Settings, label: 'الإعدادات' },
+];
 
   const adminMenus = [
     { path: '/admin', icon: BarChart3, label: 'لوحة التحكم' },

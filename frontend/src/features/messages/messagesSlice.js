@@ -9,8 +9,10 @@ export const getConversations = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/conversations');
+      console.log('📦 Conversations API Response:', response.data);
       return response.data;
     } catch (error) {
+      console.error('❌ Conversations API Error:', error);
       return rejectWithValue(error.response?.data?.message);
     }
   }
@@ -33,13 +35,16 @@ export const sendMessage = createAsyncThunk(
   'messages/send',
   async ({ conversationId, message, type = 'text' }, { rejectWithValue }) => {
     try {
+      console.log('📤 Sending message:', { conversationId, message });
       const response = await api.post(`/conversations/${conversationId}/messages`, {
         message,
         type,
       });
+      console.log('✅ Message sent:', response.data);
       const newMessage = response.data?.data || response.data;
       return { conversationId, message: newMessage };
     } catch (error) {
+      console.error('❌ Send message error:', error);
       return rejectWithValue(error.response?.data?.message);
     }
   }
@@ -125,7 +130,8 @@ const messagesSlice = createSlice({
       })
       .addCase(getConversations.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.conversations = action.payload?.data || action.payload || [];
+        state.conversations = action.payload?.data || action.payload?.conversations || [];
+        console.log('✅ Conversations loaded:', state.conversations.length);
       })
       .addCase(getConversations.rejected, (state, action) => {
         state.isLoading = false;
@@ -178,6 +184,7 @@ const messagesSlice = createSlice({
   },
 });
 
+// ========== EXPORT ACTIONS ==========
 export const {
   setCurrentConversation,
   clearError,
@@ -187,4 +194,15 @@ export const {
   markAsReadRealtime,
 } = messagesSlice.actions;
 
+// ========== EXPORT SELECTORS ==========
+export const selectConversations = (state) => state.messages.conversations;
+export const selectCurrentConversation = (state) => state.messages.currentConversation;
+export const selectMessagesByConversation = (state, conversationId) => 
+  state.messages.messages[conversationId] || [];
+export const selectMessagesLoading = (state) => state.messages.isLoading;
+export const selectMessagesError = (state) => state.messages.error;
+export const selectTypingUsers = (state, conversationId) => 
+  state.messages.typingUsers[conversationId] || [];
+
+// ========== DEFAULT EXPORT ==========
 export default messagesSlice.reducer;

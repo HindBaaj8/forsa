@@ -1,18 +1,5 @@
 <?php
 
-// 🔥 حل مشكلة CORS
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: http://localhost:3000');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
-    http_response_code(200);
-    exit();
-}
-
-// headers عادية
-header('Access-Control-Allow-Origin: http://localhost:3000');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
@@ -27,12 +14,32 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\PaymentController; // 🔥 أضف هذا في الأعلى
-
+use App\Http\Controllers\PaymentController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
-| AUTH
+| CORS Headers (Only for HTTP requests, not for Artisan)
+|--------------------------------------------------------------------------
+*/
+if (php_sapi_name() !== 'cli') {
+    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+       // header('Access-Control-Allow-Origin: http://localhost:3000');
+        //header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        //header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+        http_response_code(200);
+        exit();
+    }
+    
+    header('Access-Control-Allow-Origin: http://localhost:3000');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+}
+
+/*
+|--------------------------------------------------------------------------
+| AUTH ROUTES
 |--------------------------------------------------------------------------
 */
 Route::prefix('auth')->group(function () {
@@ -42,11 +49,24 @@ Route::prefix('auth')->group(function () {
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth:sanctum');
     Route::put('/me', [AuthController::class, 'updateProfile'])->middleware('auth:sanctum');
     Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('auth:sanctum');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/send-otp', [AuthController::class, 'sendOtp']);
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
+    Route::post('/login-with-otp', [AuthController::class, 'loginWithOtp']);
 });
 
 /*
 |--------------------------------------------------------------------------
-| CATEGORIES
+| FORGOT PASSWORD DIRECT ROUTE (without auth prefix)
+|--------------------------------------------------------------------------
+*/
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+/*
+|--------------------------------------------------------------------------
+| CATEGORIES ROUTES
 |--------------------------------------------------------------------------
 */
 Route::get('/categories', [CategoryController::class, 'index']);
@@ -58,7 +78,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| SERVICES
+| SERVICES ROUTES
 |--------------------------------------------------------------------------
 */
 Route::get('/services', [ServiceController::class, 'index']);
@@ -76,7 +96,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| REQUESTS
+| REQUESTS ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->prefix('requests')->group(function () {
@@ -90,7 +110,7 @@ Route::middleware('auth:sanctum')->prefix('requests')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| INTERESTS
+| INTERESTS ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
@@ -102,7 +122,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| ORDERS
+| ORDERS ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
@@ -115,7 +135,7 @@ Route::middleware('auth:sanctum')->prefix('orders')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| CONVERSATIONS & MESSAGES
+| CONVERSATIONS & MESSAGES ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->prefix('conversations')->group(function () {
@@ -131,7 +151,7 @@ Route::middleware('auth:sanctum')->post('/messages/{message}/read', [MessageCont
 
 /*
 |--------------------------------------------------------------------------
-| NOTIFICATIONS
+| NOTIFICATIONS ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
@@ -144,7 +164,7 @@ Route::middleware('auth:sanctum')->prefix('notifications')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| FAVORITES
+| FAVORITES ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->prefix('favorites')->group(function () {
@@ -156,7 +176,7 @@ Route::middleware('auth:sanctum')->prefix('favorites')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| CLIENT
+| CLIENT ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum'])->prefix('client')->group(function () {
@@ -168,59 +188,99 @@ Route::middleware(['auth:sanctum'])->prefix('client')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| /*
-|--------------------------------------------------------------------------
-| WORKER
+| WORKER ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum'])->prefix('worker')->group(function () {
-    // Dashboard & Profile
     Route::get('/dashboard', [WorkerController::class, 'dashboard']);
     Route::get('/profile', [WorkerController::class, 'profile']);
     Route::put('/profile', [WorkerController::class, 'updateProfile']);
-    
-    // Services
     Route::get('/services', [WorkerController::class, 'services']);
-    
-    // 🔥 الطلبات المتاحة (من العملاء)
     Route::get('/requests', [WorkerController::class, 'getAvailableRequests']);
     Route::post('/requests/{request}/accept', [WorkerController::class, 'acceptRequest']);
     Route::post('/requests/{request}/reject', [WorkerController::class, 'rejectRequest']);
     Route::post('/requests/{request}/offer', [WorkerController::class, 'submitOffer']);
-    
-    // Orders
     Route::get('/orders', [WorkerController::class, 'orders']);
     Route::post('/orders/{order}/accept', [WorkerController::class, 'acceptOrder']);
     Route::post('/orders/{order}/reject', [WorkerController::class, 'rejectOrder']);
     Route::post('/orders/{order}/start', [WorkerController::class, 'startOrder']);
     Route::post('/orders/{order}/complete', [WorkerController::class, 'completeOrder']);
-    
-    // Earnings & Schedule
     Route::get('/earnings', [WorkerController::class, 'earnings']);
     Route::get('/schedule', [WorkerController::class, 'schedule']);
     Route::put('/schedule/{id}', [WorkerController::class, 'updateSchedule']);
-    
-    // Notifications
     Route::put('/notifications', [WorkerController::class, 'updateNotifications']);
 });
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN
+| ADMIN ROUTES
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
     Route::get('/users', [AdminController::class, 'users']);
-    Route::put('/users/{user}/ban', [AdminController::class, 'banUser']);
-    Route::put('/users/{user}/activate', [AdminController::class, 'activateUser']);
+    Route::post('/users/{user}/ban', [AdminController::class, 'banUser']);
+    Route::post('/users/{user}/activate', [AdminController::class, 'activateUser']);
+    Route::delete('/users/{user}', [AdminController::class, 'deleteUser']);
     Route::get('/workers', [AdminController::class, 'workers']);
-    Route::put('/workers/{worker}/approve', [AdminController::class, 'approveWorker']);
+    Route::post('/workers/{worker}/approve', [AdminController::class, 'approveWorker']);
+    Route::post('/workers/{worker}/ban', [AdminController::class, 'banWorker']);
+    Route::delete('/workers/{worker}', [AdminController::class, 'deleteWorker']);
+    Route::get('/requests', [AdminController::class, 'requests']);
+    Route::put('/requests/{request}', [AdminController::class, 'updateRequest']);
+    Route::delete('/requests/{request}', [AdminController::class, 'deleteRequest']);
+    Route::get('/categories', [AdminController::class, 'categories']);
+    Route::post('/categories', [AdminController::class, 'storeCategory']);
+    Route::put('/categories/{category}', [AdminController::class, 'updateCategory']);
+    Route::delete('/categories/{category}', [AdminController::class, 'deleteCategory']);
+    Route::post('/categories/{category}/toggle', [AdminController::class, 'toggleCategory']);
     Route::get('/finance', [AdminController::class, 'finance']);
     Route::get('/reports', [AdminController::class, 'reports']);
+    Route::post('/reports/{report}/resolve', [AdminController::class, 'resolveReport']);
 });
 
-//payament
+/*
+|--------------------------------------------------------------------------
+| UPLOAD AVATAR ROUTES
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->post('/upload/avatar', function (Request $request) {
+    $request->validate([
+        'avatar' => 'required|image|mimes:jpg,jpeg,png,gif|max:2048'
+    ]);
+    
+    $user = $request->user();
+    
+    if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+        Storage::disk('public')->delete($user->avatar);
+    }
+    
+    $path = $request->file('avatar')->store('avatars', 'public');
+    $user->update(['avatar' => $path]);
+    
+    return response()->json([
+        'success' => true,
+        'avatar_url' => $path
+    ]);
+});
+
+Route::middleware('auth:sanctum')->delete('/upload/avatar', function (Request $request) {
+    $user = $request->user();
+    
+    if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+        Storage::disk('public')->delete($user->avatar);
+    }
+    
+    $user->update(['avatar' => null]);
+    
+    return response()->json(['success' => true]);
+});
+
+/*
+|--------------------------------------------------------------------------
+| PAYMENTS ROUTES
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->prefix('payments')->group(function () {
     Route::get('/', [PaymentController::class, 'index']);
     Route::get('/order/{order}', [PaymentController::class, 'getByOrder']);
