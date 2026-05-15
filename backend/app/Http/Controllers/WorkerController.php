@@ -410,20 +410,17 @@ class WorkerController extends Controller
                 return response()->json(['success' => false, 'message' => 'Request cannot be accepted'], 400);
             }
             
-            // ✅ تحديث حالة الطلب إلى accepted
             $serviceRequest->update([
                 'status' => 'accepted',
                 'accepted_by' => $user->id,
                 'accepted_at' => now()
             ]);
             
-            // ✅ إنشاء محادثة بين العميل والعامل
             $conversation = Conversation::firstOrCreate([
                 'client_id' => $serviceRequest->client_id,
                 'worker_id' => $user->id,
             ]);
             
-            // ✅ إنشاء إشعار للعميل
             Notification::create([
                 'user_id' => $serviceRequest->client_id,
                 'type' => 'request_accepted',
@@ -459,14 +456,12 @@ class WorkerController extends Controller
                 return response()->json(['success' => false, 'message' => 'Request cannot be rejected'], 400);
             }
             
-            // ✅ تحديث حالة الطلب إلى rejected
             $serviceRequest->update([
                 'status' => 'rejected',
                 'rejected_by' => $user->id,
                 'rejected_at' => now()
             ]);
             
-            // ✅ إنشاء إشعار للعميل
             Notification::create([
                 'user_id' => $serviceRequest->client_id,
                 'type' => 'request_rejected',
@@ -502,13 +497,16 @@ class WorkerController extends Controller
             
             $user = Auth::user();
             
+            if ($user->role !== 'worker') {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+            
             $serviceRequest = ServiceRequest::findOrFail($requestId);
             
             if ($serviceRequest->status !== 'pending') {
-                return response()->json(['success' => false, 'message' => 'Request is no longer available'], 400);
+                return response()->json(['message' => 'Request is no longer available'], 400);
             }
             
-            // إنشاء أو تحديث العرض
             $interest = Interest::updateOrCreate(
                 [
                     'request_id' => $serviceRequest->id,
@@ -522,27 +520,22 @@ class WorkerController extends Controller
                 ]
             );
             
-            // إنشاء إشعار للعميل
-            try {
-                Notification::create([
-                    'user_id' => $serviceRequest->client_id,
-                    'type' => 'worker_applied',
-                    'title' => '📢 عامل مهتم بخدمتك',
-                    'message' => "🔧 العامل {$user->first_name} {$user->last_name} قدم عرضاً لطلبك: {$serviceRequest->title} - {$validated['price']} درهم",
-                    'data' => json_encode([
-                        'request_id' => $serviceRequest->id,
-                        'worker_id' => $user->id,
-                        'worker_name' => $user->first_name . ' ' . $user->last_name,
-                        'price' => $validated['price'],
-                        'duration' => $validated['duration'],
-                        'offer_message' => $validated['message'] ?? null
-                    ]),
-                    'link' => '/client/requests',
-                    'is_read' => false
-                ]);
-            } catch (\Exception $e) {
-                \Log::warning('Failed to create notification: ' . $e->getMessage());
-            }
+            Notification::create([
+                'user_id' => $serviceRequest->client_id,
+                'type' => 'worker_applied',
+                'title' => '📢 عامل مهتم بخدمتك',
+                'message' => "🔧 العامل {$user->first_name} {$user->last_name} قدم عرضاً لطلبك: {$serviceRequest->title} - {$validated['price']} درهم",
+                'data' => json_encode([
+                    'request_id' => $serviceRequest->id,
+                    'worker_id' => $user->id,
+                    'worker_name' => $user->first_name . ' ' . $user->last_name,
+                    'price' => $validated['price'],
+                    'duration' => $validated['duration'],
+                    'offer_message' => $validated['message'] ?? null
+                ]),
+                'link' => '/client/requests',
+                'is_read' => false
+            ]);
             
             return response()->json([
                 'success' => true,

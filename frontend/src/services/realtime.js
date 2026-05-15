@@ -7,11 +7,11 @@ class RealtimeManager {
   constructor() {
     this.subscriptions = new Map();
     this.userId = null;
-    this.isConnected = false;
   }
 
   initialize(userId, token) {
     console.log('🎬 RealtimeManager.initialize - userId:', userId);
+    console.log('⚠️ Using POLLING mode (WebSocket disabled)');
     this.userId = userId;
     
     if (!getEcho()) {
@@ -19,47 +19,29 @@ class RealtimeManager {
       initializeEcho(token);
     }
     
-    // ✅ انتظر 2 ثانية قبل محاولة إعداد القنوات
-    setTimeout(() => {
-      if (getEcho()) {
-        this.setupUserChannel();
-      } else {
-        console.warn('⚠️ Echo still not available after delay');
-      }
-    }, 2000);
+    this.setupUserChannel();
   }
 
   setupUserChannel() {
     if (!this.userId) return;
     
     const echo = getEcho();
-    if (!echo || !echo.connector || !echo.connector.socket) {
-      console.warn('⚠️ Echo or WebSocket not available, skipping user channel');
+    if (!echo) {
+      console.warn('⚠️ Echo not available, skipping user channel');
       return;
     }
     
     console.log('📡 Setting up user channel for:', this.userId);
-    
-    try {
-      const channel = echo.private(`App.Models.User.${this.userId}`);
-      
-      if (channel && typeof channel.listen === 'function') {
-        channel.listen('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (event) => {
-          console.log('🔔 Notification received:', event);
-        });
-        
-        this.subscriptions.set(`user.${this.userId}`, channel);
-        console.log('✅ User channel setup successfully');
-      }
-    } catch (error) {
-      console.error('Error setting up user channel:', error);
-    }
+    const channel = echo.private(`App.Models.User.${this.userId}`);
+    channel.listen('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (event) => {
+      console.log('🔔 Notification received:', event);
+    });
   }
 
   subscribeToConversation(conversationId) {
     const echo = getEcho();
-    if (!echo || !echo.connector || !echo.connector.socket) {
-      console.warn('⚠️ Echo or WebSocket not available, cannot subscribe');
+    if (!echo) {
+      console.warn('⚠️ Echo not available, cannot subscribe');
       return null;
     }
     
@@ -71,46 +53,31 @@ class RealtimeManager {
     }
 
     console.log('📡 Subscribing to conversation:', conversationId);
+    const channel = echo.private(`conversation.${conversationId}`);
     
-    try {
-      const channel = echo.private(`conversation.${conversationId}`);
-      
-      if (channel && typeof channel.listen === 'function') {
-        channel.listen('.message.sent', (event) => {
-          console.log('💬 New message event:', event);
-          store.dispatch(receiveMessage({
-            conversationId: conversationId,
-            message: {
-              id: event.id,
-              message: event.message,
-              sender_id: event.sender_id,
-              created_at: event.created_at,
-              is_read: false,
-            }
-          }));
-        });
-
-        if (typeof channel.listenForWhisper === 'function') {
-          channel.listenForWhisper('typing', (event) => {
-            console.log('✍️ Typing event:', event);
-          });
+    channel.listen('.message.sent', (event) => {
+      console.log('💬 New message event:', event);
+      store.dispatch(receiveMessage({
+        conversationId: conversationId,
+        message: {
+          id: event.id,
+          message: event.message,
+          sender_id: event.sender_id,
+          created_at: event.created_at,
+          is_me: event.sender_id === this.userId,
+          is_read: false,
         }
+      }));
+    });
 
-        this.subscriptions.set(channelKey, channel);
-        console.log('✅ Subscribed to conversation:', conversationId);
-      }
-      
-      return channel;
-    } catch (error) {
-      console.error('Error subscribing to conversation:', error);
-      return null;
-    }
+    this.subscriptions.set(channelKey, channel);
+    return channel;
   }
 
   unsubscribeFromConversation(conversationId) {
     const channelKey = `conversation.${conversationId}`;
     const channel = this.subscriptions.get(channelKey);
-    if (channel && typeof channel.stopListening === 'function') {
+    if (channel) {
       console.log('🔴 Unsubscribing from conversation:', conversationId);
       channel.stopListening('.message.sent');
       this.subscriptions.delete(channelKey);
@@ -119,24 +86,23 @@ class RealtimeManager {
 
   sendTyping(conversationId, isTyping, userName) {
     const channel = this.subscriptions.get(`conversation.${conversationId}`);
-    if (channel && typeof channel.whisper === 'function') {
+    if (channel && channel.whisper) {
       channel.whisper('typing', {
         user_id: this.userId,
         user_name: userName,
         typing: isTyping,
-        timestamp: Date.now(),
       });
     }
   }
 
   disconnect() {
     console.log('🔴 Disconnecting all subscriptions');
-    this.subscriptions.forEach((channel, key) => {
-      if (key.startsWith('conversation.') && channel && typeof channel.stopListening === 'function') {
-        channel.stopListening('.message.sent');
+    this.subscriptions.forEach((_, key) => {
+      if (key.startsWith('conversation.')) {
+        const conversationId = key.replace('conversation.', '');
+        this.unsubscribeFromConversation(conversationId);
       }
     });
-    this.subscriptions.clear();
     disconnectEcho();
   }
 }

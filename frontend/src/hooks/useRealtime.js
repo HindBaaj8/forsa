@@ -1,6 +1,6 @@
 // hooks/useRealtime.js
-import { useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useRef, useCallback } from 'react';  // ✅ أضف useCallback
+import { useSelector } from 'react-redux';
 import realtimeManager from '../services/realtime';
 import { selectIsAuthenticated, selectToken, selectUser } from '../features/auth/authSelectors';
 
@@ -11,19 +11,18 @@ export const useRealtime = () => {
   const initialized = useRef(false);
 
   useEffect(() => {
+    console.log('🔍 useRealtime - isAuthenticated:', isAuthenticated);
+    console.log('🔍 useRealtime - token:', token ? 'Yes' : 'No');
+    console.log('🔍 useRealtime - user:', user?.id);
+    
     if (isAuthenticated && token && user && !initialized.current) {
-      console.log('✅ Initializing realtime connection...');
-      try {
-        realtimeManager.initialize(user.id, token);
-        initialized.current = true;
-      } catch (error) {
-        console.error('❌ Failed to initialize realtime:', error);
-      }
+      console.log('✅ Initializing realtime...');
+      realtimeManager.initialize(user.id, token);
+      initialized.current = true;
     }
-
+    
     return () => {
       if (!isAuthenticated && initialized.current) {
-        console.log('🔴 Cleaning up realtime connection...');
         realtimeManager.disconnect();
         initialized.current = false;
       }
@@ -41,7 +40,7 @@ export const useConversationRealtime = (conversationId) => {
       realtimeManager.subscribeToConversation(conversationId);
       subscribed.current = true;
     }
-
+    
     return () => {
       if (conversationId && subscribed.current) {
         console.log('🔴 Unsubscribing from conversation:', conversationId);

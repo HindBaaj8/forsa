@@ -288,3 +288,6 @@ Route::middleware('auth:sanctum')->prefix('payments')->group(function () {
     Route::post('/confirm', [PaymentController::class, 'confirmPayment']);
     Route::get('/status/{order}', [PaymentController::class, 'status']);
 });
+Route::post('/broadcasting/auth', function () {
+    return response()->json(['auth' => 'ok']);
+});

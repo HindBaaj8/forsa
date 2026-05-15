@@ -15,15 +15,15 @@ class Notification extends Model
         'user_id',
         'type',
         'title',
-        'message',
+        'body',          // استخدم body بدل message
         'data',
-        'link',
-        'is_read'
+        'action_url',    // استخدم action_url بدل link
+        'read_at',       // استخدم read_at بدل is_read
     ];
 
     protected $casts = [
         'data' => 'array',
-        'is_read' => 'boolean',
+        'read_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -31,5 +31,17 @@ class Notification extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+    
+    // Helper method للتحقق إذا كانت مقروءة
+    public function isRead()
+    {
+        return !is_null($this->read_at);
+    }
+    
+    // Helper method لتعليمها كمقروءة
+    public function markAsRead()
+    {
+        $this->update(['read_at' => now()]);
     }
 }
