@@ -290,3 +290,8 @@ Route::middleware('auth:sanctum')->prefix('payments')->group(function () {
 Route::post('/broadcasting/auth', function () {
     return response()->json(['auth' => 'ok']);
 });
+// ===================== OTP RESET PASSWORD (SECURE) =====================
+// ===================== OTP RESET PASSWORD =====================
+Route::post('/auth/password/otp/request', [AuthController::class, 'sendOtpReset']);
+Route::post('/auth/password/otp/verify', [AuthController::class, 'verifyOtpOnly']);
+Route::post('/auth/password/otp/reset', [AuthController::class, 'resetPasswordWithOtp']);

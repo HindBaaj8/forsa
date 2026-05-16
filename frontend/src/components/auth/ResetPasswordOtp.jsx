@@ -1,26 +1,33 @@
-// pages/ResetPassword.jsx
-import React, { useState } from 'react';
+// src/components/auth/ResetPasswordOtp.jsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
-export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
+export default function ResetPasswordOtp() {
   const navigate = useNavigate();
-  const token = searchParams.get('token');
-  const email = searchParams.get('email');
+  const [searchParams] = useSearchParams();
+  const email = searchParams.get('email') || '';
   
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    console.log('📧 Reset password for email:', email);
+    if (!email) {
+      toast.error('الرجاء إدخال البريد الإلكتروني أولاً');
+      navigate('/forgot-password');
+    }
+  }, [email, navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (password.length < 8) {
-      toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل');
+      toast.error('كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل');
       return;
     }
     
@@ -31,47 +38,36 @@ export default function ResetPassword() {
     
     setLoading(true);
     try {
-      await api.post('/reset-password', {
+      const response = await api.post('/auth/password/otp/reset', {
         email,
-        token,
         password,
         password_confirmation: confirmPassword
       });
       
-      toast.success('تم تغيير كلمة المرور بنجاح');
-      navigate('/auth');
+      console.log('Reset response:', response.data);
+      
+      if (response.data.success) {
+        toast.success('تم تغيير كلمة المرور بنجاح');
+        navigate('/auth');
+      } else {
+        toast.error(response.data.message || 'حدث خطأ');
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'فشل تغيير كلمة المرور');
+      console.error('Error:', error.response?.data);
+      toast.error(error.response?.data?.message || 'حدث خطأ');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!token || !email) {
-    return (
-      <div className="forgot-container">
-        <div className="forgot-card">
-          <div className="forgot-icon">⚠️</div>
-          <h2>رابط غير صالح</h2>
-          <p>الرابط الذي استخدمته غير صالح أو منتهي الصلاحية</p>
-          <button className="btn-submit" onClick={() => navigate('/forgot-password')}>
-            طلب رابط جديد
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="forgot-container">
       <div className="forgot-card">
-        <button className="back-btn" onClick={() => navigate('/auth')}>
+        <button className="back-btn" onClick={() => navigate('/verify-otp')}>
           <ArrowLeft size={16} /> رجوع
         </button>
-        
         <div className="forgot-icon">🔑</div>
-        <h2>إعادة تعيين كلمة المرور</h2>
-        <p>أدخل كلمة المرور الجديدة</p>
+        <h2>كلمة مرور جديدة</h2>
         <p className="reset-email">{email}</p>
         
         <form onSubmit={handleSubmit}>
@@ -90,6 +86,7 @@ export default function ResetPassword() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            <span className="form-hint">يجب أن تكون 8 أحرف على الأقل</span>
           </div>
           
           <div className="form-group">
@@ -107,7 +104,7 @@ export default function ResetPassword() {
           </div>
           
           <button type="submit" className="btn-submit" disabled={loading}>
-            {loading ? 'جاري...' : 'تغيير كلمة المرور'}
+            {loading ? <span className="spinner" /> : 'تغيير كلمة المرور'}
           </button>
         </form>
       </div>

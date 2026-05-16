@@ -64,10 +64,19 @@ export default function Auth() {
     }
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setErrors({});
+ const handleRegister = async (e) => {
+  e.preventDefault();
+  
+  console.log('📤 Register data:', {  // ✅ أضف هذا
+    first_name: firstName,
+    last_name: lastName,
+    email: email,
+    phone: phone,
+    city: city,
+    password: password,
+    password_confirmation: confirmPassword,
+    role: role,
+  });
     
     // Validation
     const newErrors = {};
@@ -163,7 +172,7 @@ export default function Auth() {
           </div>
           
           {isLogin ? (
-            // Login Form
+            // ✅ Login Form
             <form onSubmit={handleLogin}>
               {errors.general && <div className="error-box">{errors.general}</div>}
               
@@ -195,7 +204,12 @@ export default function Auth() {
                 <label className="form-check">
                   <input type="checkbox" /> تذكّرني
                 </label>
-                <button type="button" className="form-link" onClick={() => navigate('/forgot-password')}>
+                {/* ✅ زر "نسيت كلمة المرور" يروح لـ /forgot-password */}
+                <button 
+                  type="button" 
+                  className="form-link" 
+                  onClick={() => navigate('/forgot-password')}
+                >
                   نسيت كلمة المرور؟
                 </button>
               </div>

@@ -15,9 +15,11 @@ import './styles/Navbar.css';
 import Home from './pages/Home';
 import Auth from './components/auth/Auth';
 import NotificationsPage from './pages/NotificationsPage';
-import ForgotPassword from './components/auth/ForgotPassword';
-import ResetPassword from './components/auth/ResetPassword';
-import OtpLogin from './components/auth/OtpLogin';
+
+// Auth Components (OTP Reset Password - 3 صفحات منفصلة)
+import RequestOtpReset from './components/auth/RequestOtpReset';
+import VerifyOtp from './components/auth/VerifyOtp';
+import ResetPasswordOtp from './components/auth/ResetPasswordOtp';
 
 // Admin
 import AdminApp from './pages/AdminApp';
@@ -68,10 +70,12 @@ function App() {
       {/* ========== PUBLIC ROUTES ========== */}
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/auth/otp" element={<OtpLogin />} />
       <Route path="/notifications" element={<NotificationsPage />} />
+
+      {/* ========== OTP RESET PASSWORD (3 صفحات منفصلة) ========== */}
+      <Route path="/forgot-password" element={<RequestOtpReset />} />
+      <Route path="/verify-otp" element={<VerifyOtp />} />
+      <Route path="/reset-password-otp" element={<ResetPasswordOtp />} />
 
       {/* ========== ADMIN ROUTES ========== */}
       <Route path="/admin/*" element={

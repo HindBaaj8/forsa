@@ -8,9 +8,12 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
@@ -189,7 +192,7 @@ class AuthController extends Controller
     }
 
     /**
-     * تغيير كلمة المرور
+     * تغيير كلمة المرور (من الإعدادات)
      */
     public function changePassword(Request $request)
     {
@@ -231,228 +234,198 @@ class AuthController extends Controller
         }
     }
 
+    // ===================== OTP RESET PASSWORD (3 PAGES SEPARATED) =====================
+
     /**
-     * إرسال رابط إعادة تعيين كلمة المرور
+     * 1️⃣ إرسال OTP لإعادة تعيين كلمة المرور (صفحة 1: إدخال الإيميل)
      */
-    public function forgotPassword(Request $request)
+    public function sendOtpReset(Request $request)
     {
-        try {
-            $request->validate([
-                'email' => 'required|email|exists:users,email'
-            ]);
-            
-            $token = Str::random(60);
-            
-            \DB::table('password_reset_tokens')->updateOrInsert(
-                ['email' => $request->email],
-                ['token' => $token, 'created_at' => now()]
-            );
-            
-            $resetLink = "http://localhost:3000/reset-password?token={$token}&email=" . urlencode($request->email);
-            
+        $request->validate([
+            'email' => 'required|email|exists:users,email'
+        ]);
+
+        $email = $request->email;
+        $key = 'otp_request_' . $email;
+
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $seconds = RateLimiter::availableIn($key);
             return response()->json([
-                'success' => true,
-                'message' => 'Reset link sent successfully',
-                'reset_link' => $resetLink
-            ]);
-            
-        } catch (ValidationException $e) {
+                'message' => 'لقد تجاوزت الحد المسموح. يرجى المحاولة بعد ' . ceil($seconds / 60) . ' دقائق'
+            ], 429);
+        }
+
+        RateLimiter::hit($key, 900);
+
+        $lastOtpKey = 'otp_last_sent_' . $email;
+        if (Cache::has($lastOtpKey)) {
             return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'message' => 'يرجى الانتظار 60 ثانية قبل طلب رمز جديد'
+            ], 429);
+        }
+
+        $user = User::where('email', $email)->first();
+        $otp = rand(100000, 999999);
+
+        \Log::info('Generated OTP for ' . $email . ': ' . $otp);
+
+        Cache::put('otp_reset_' . $email, [
+            'code' => $otp,
+            'attempts' => 0
+        ], 60);
+        
+        Cache::put($lastOtpKey, true, 60);
+
+        $this->sendOtpResetEmail($email, $otp, $user->first_name);
+
+        return response()->json([
+            'success' => true, 
+            'message' => 'تم إرسال رمز التحقق'
+        ]);
+    }
+
+    /**
+     * 2️⃣ التحقق من OTP فقط (صفحة 2: إدخال الكود فقط)
+     */
+    public function verifyOtpOnly(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|digits:6'
+        ]);
+
+        $email = $request->email;
+        $cachedData = Cache::get('otp_reset_' . $email);
+
+        \Log::info('OTP Verification:', [
+            'email' => $email,
+            'otp_received' => $request->otp,
+            'cached_otp' => $cachedData ? $cachedData['code'] : null,
+            'attempts' => $cachedData ? $cachedData['attempts'] : null
+        ]);
+
+        if (!$cachedData) {
+            return response()->json(['message' => 'رمز التحقق منتهي الصلاحية (60 ثانية). يرجى طلب رمز جديد'], 422);
+        }
+
+        $storedOtp = $cachedData['code'];
+        $attempts = $cachedData['attempts'];
+
+        if ($attempts >= 3) {
+            Cache::forget('otp_reset_' . $email);
+            return response()->json([
+                'message' => 'لقد تجاوزت الحد المسموح من المحاولات. يرجى طلب رمز جديد'
+            ], 429);
+        }
+
+        if ((string)$storedOtp !== (string)$request->otp) {
+            Cache::put('otp_reset_' . $email, [
+                'code' => $storedOtp,
+                'attempts' => $attempts + 1
+            ], 60);
+            
+            $remaining = 3 - ($attempts + 1);
+            return response()->json([
+                'message' => 'رمز التحقق غير صحيح. لديك ' . $remaining . ' محاولات متبقية'
             ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
         }
+
+        Cache::put('otp_verified_' . $email, true, 300);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم التحقق بنجاح',
+            'email' => $email
+        ]);
     }
 
     /**
-     * إعادة تعيين كلمة المرور
+     * 3️⃣ تغيير كلمة المرور بعد التحقق من OTP (صفحة 3: كلمة المرور فقط)
      */
-    public function resetPassword(Request $request)
+    public function resetPasswordWithOtp(Request $request)
     {
-        try {
-            $request->validate([
-                'email' => 'required|email|exists:users,email',
-                'token' => 'required|string',
-                'password' => 'required|string|min:8|confirmed'
-            ]);
-            
-            $resetRecord = \DB::table('password_reset_tokens')
-                ->where('email', $request->email)
-                ->where('token', $request->token)
-                ->first();
-            
-            if (!$resetRecord) {
-                return response()->json([
-                    'message' => 'Invalid or expired token'
-                ], 422);
-            }
-            
-            if (now()->diffInMinutes($resetRecord->created_at) > 60) {
-                return response()->json([
-                    'message' => 'Token has expired'
-                ], 422);
-            }
-            
-            $user = User::where('email', $request->email)->first();
-            $user->update([
-                'password' => Hash::make($request->password)
-            ]);
-            
-            \DB::table('password_reset_tokens')->where('email', $request->email)->delete();
-            
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed'
+        ]);
+
+        $email = $request->email;
+        $isVerified = Cache::get('otp_verified_' . $email);
+
+        if (!$isVerified) {
             return response()->json([
-                'success' => true,
-                'message' => 'Password reset successfully'
-            ]);
-            
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'message' => 'يرجى التحقق من الرمز أولاً'
             ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
         }
+
+        $user = User::where('email', $email)->first();
+        
+        if (!$user) {
+            return response()->json(['message' => 'المستخدم غير موجود'], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        // تنظيف cache
+        Cache::forget('otp_verified_' . $email);
+        Cache::forget('otp_reset_' . $email);
+        Cache::forget('otp_request_' . $email);
+        Cache::forget('otp_last_sent_' . $email);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تغيير كلمة المرور بنجاح'
+        ]);
     }
 
-    /**
-     * إرسال كود OTP إلى البريد الإلكتروني
-     */
-    public function sendOtp(Request $request)
+    // ===================== EMAIL METHODS =====================
+
+    private function sendOtpResetEmail($email, $otp, $name)
     {
-        try {
-            $request->validate([
-                'email' => 'required|email|exists:users,email'
-            ]);
-            
-            $user = User::where('email', $request->email)->first();
-            $otp = rand(100000, 999999);
-            
-            Cache::put('otp_' . $request->email, $otp, 600);
-            
-            $this->sendOtpEmail($request->email, $otp, $user->first_name);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'تم إرسال رمز التحقق إلى بريدك الإلكتروني',
-                'email' => $request->email
-            ]);
-            
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
-        }
+        $html = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <title>إعادة تعيين كلمة المرور - فرصة عمل</title>
+            <style>
+                body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+                .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; }
+                .header { background: linear-gradient(135deg, #1a2a3a 0%, #2c3e50 100%); color: white; padding: 30px; text-align: center; }
+                .otp-code { font-size: 48px; font-weight: bold; text-align: center; padding: 30px; background: #f0f0f0; margin: 20px; border-radius: 12px; letter-spacing: 10px; }
+                .content { padding: 20px; text-align: center; }
+                .footer { background: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h2>🔐 إعادة تعيين كلمة المرور</h2>
+                    <p>منصة فرصة عمل</p>
+                </div>
+                <div class='content'>
+                    <h3>مرحباً $name!</h3>
+                    <p>رمز التحقق الخاص بك هو:</p>
+                    <div class='otp-code'>$otp</div>
+                    <p>هذا الرمز صالح لمدة <strong>60 ثانية فقط</strong>.</p>
+                    <p>لديك <strong>3 محاولات فقط</strong>. بعد ذلك سيتم إلغاء الرمز.</p>
+                </div>
+                <div class='footer'>
+                    <p>© " . date('Y') . " فرصة عمل - جميع الحقوق محفوظة</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        ";
+        
+        Mail::html($html, function ($message) use ($email) {
+            $message->to($email)
+                    ->subject('🔐 إعادة تعيين كلمة المرور - فرصة عمل');
+        });
     }
 
-    /**
-     * التحقق من كود OTP
-     */
-    public function verifyOtp(Request $request)
-    {
-        try {
-            $request->validate([
-                'email' => 'required|email',
-                'otp' => 'required|digits:6'
-            ]);
-            
-            $cachedOtp = Cache::get('otp_' . $request->email);
-            
-            if (!$cachedOtp) {
-                return response()->json([
-                    'message' => 'رمز التحقق منتهي الصلاحية'
-                ], 422);
-            }
-            
-            if ($cachedOtp != $request->otp) {
-                return response()->json([
-                    'message' => 'رمز التحقق غير صحيح'
-                ], 422);
-            }
-            
-            Cache::forget('otp_' . $request->email);
-            Cache::put('verified_' . $request->email, true, 300);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'تم التحقق بنجاح',
-                'email' => $request->email
-            ]);
-            
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * تسجيل الدخول باستخدام OTP
-     */
-    public function loginWithOtp(Request $request)
-    {
-        try {
-            $request->validate([
-                'email' => 'required|email'
-            ]);
-            
-            $isVerified = Cache::get('verified_' . $request->email);
-            
-            if (!$isVerified) {
-                return response()->json([
-                    'message' => 'يرجى التحقق من بريدك الإلكتروني أولاً'
-                ], 422);
-            }
-            
-            $user = User::where('email', $request->email)->first();
-            
-            if (!$user) {
-                return response()->json([
-                    'message' => 'المستخدم غير موجود'
-                ], 422);
-            }
-            
-            Auth::login($user);
-            $token = $user->createToken('auth_token')->plainTextToken;
-            
-            $user->update([
-                'last_seen_at' => now(),
-                'is_online' => true,
-            ]);
-            
-            Cache::forget('verified_' . $request->email);
-            
-            return response()->json([
-                'user' => $user,
-                'token' => $token,
-            ]);
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * إرسال البريد الإلكتروني مع OTP
-     */
     private function sendOtpEmail($email, $otp, $name)
     {
         $html = "
@@ -490,10 +463,9 @@ class AuthController extends Controller
         </html>
         ";
         
-        Mail::send([], [], function ($message) use ($email, $html) {
+        Mail::html($html, function ($message) use ($email) {
             $message->to($email)
-                    ->subject('🔐 رمز التحقق - فرصة عمل')
-                    ->setBody($html, 'text/html');
+                    ->subject('🔐 رمز التحقق - فرصة عمل');
         });
     }
 }

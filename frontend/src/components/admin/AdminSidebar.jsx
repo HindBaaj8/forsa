@@ -11,7 +11,8 @@ import {
   DollarSign, 
   Bell, 
   Settings, 
-  LogOut 
+  LogOut,
+  MessageCircle  // ✅ أضف هذا
 } from 'lucide-react';
 import { logout } from '../../features/auth/authSlice';
 
