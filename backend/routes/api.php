@@ -17,6 +17,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\EmailVerificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -295,3 +296,31 @@ Route::post('/broadcasting/auth', function () {
 Route::post('/auth/password/otp/request', [AuthController::class, 'sendOtpReset']);
 Route::post('/auth/password/otp/verify', [AuthController::class, 'verifyOtpOnly']);
 Route::post('/auth/password/otp/reset', [AuthController::class, 'resetPasswordWithOtp']);
+
+// Email Verification
+Route::post('/auth/email/verify', [EmailVerificationController::class, 'verify']);
+Route::post('/auth/email/resend', [EmailVerificationController::class, 'resend']);
+
+// Premium Features
+Route::middleware('auth:sanctum')->prefix('premium')->group(function () {
+    Route::get('/stats', [PremiumController::class, 'getStats']);
+    Route::post('/subscribe', [PremiumController::class, 'subscribe']);
+    Route::get('/status', [PremiumController::class, 'status']);
+});
+
+// Featured Services
+Route::middleware('auth:sanctum')->prefix('featured')->group(function () {
+    Route::post('/buy', [FeaturedController::class, 'buy']);
+    Route::get('/active', [FeaturedController::class, 'getActive']);
+});
+
+// Geolocalisation
+Route::get('/services/nearby', [LocationController::class, 'nearby']);
+Route::get('/workers/nearby', [LocationController::class, 'workersNearby']);
+
+// Subscriptions
+Route::middleware('auth:sanctum')->prefix('subscriptions')->group(function () {
+    Route::get('/plans', [SubscriptionController::class, 'plans']);
+    Route::post('/checkout', [SubscriptionController::class, 'checkout']);
+    Route::post('/webhook', [SubscriptionController::class, 'webhook']);
+});

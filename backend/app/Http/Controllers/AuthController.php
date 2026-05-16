@@ -20,51 +20,104 @@ class AuthController extends Controller
     /**
      * تسجيل مستخدم جديد
      */
-    public function register(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
-                'password' => 'required|string|min:8|confirmed',
-                'role' => 'required|in:client,worker',
-                'phone' => 'nullable|string|max:20',
-                'city' => 'nullable|string|max:255',
-            ]);
+    /**
+ * تسجيل مستخدم جديد مع إرسال رمز تأكيد البريد الإلكتروني
+ */
+public function register(Request $request)
+{
+    try {
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'role' => 'required|in:client,worker',
+            'phone' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:255',
+        ]);
 
-            $user = User::create([
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'role' => $validated['role'],
-                'phone' => $validated['phone'] ?? null,
-                'city' => $validated['city'] ?? null,
-                'status' => 'active',
-                'rating' => 0,
-                'total_reviews' => 0,
-            ]);
+        $user = User::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'role' => $validated['role'],
+            'phone' => $validated['phone'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'status' => 'active',
+            'rating' => 0,
+            'total_reviews' => 0,
+        ]);
 
-            $token = $user->createToken('auth_token')->plainTextToken;
+        // ✅ إنشاء token مؤقت (للتسجيل فقط، مش للدخول)
+        $token = $user->createToken('auth_token')->plainTextToken;
 
-            return response()->json([
-                'user' => $user,
-                'token' => $token,
-            ], 201);
-            
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
-        }
+        // ✅ إرسال رمز تأكيد البريد الإلكتروني
+        $code = rand(100000, 999999);
+        Cache::put('email_verify_' . $user->email, $code, 3600);
+        
+        $this->sendVerificationEmail($user->email, $code, $user->first_name);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم التسجيل بنجاح. يرجى تأكيد بريدك الإلكتروني',
+            'email' => $user->email,
+            'token' => $token,  // ✅ نعطي token مؤقت
+            'user' => $user
+        ], 201);
+        
+    } catch (ValidationException $e) {
+        return response()->json([
+            'message' => 'Validation failed',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        \Log::error('Register error: ' . $e->getMessage());
+        return response()->json([
+            'message' => 'Server error: ' . $e->getMessage()
+        ], 500);
     }
+}
 
+private function sendVerificationEmail($email, $code, $name)
+{
+    try {
+        $html = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <title>تأكيد البريد الإلكتروني</title>
+            <style>
+                body { font-family: Arial, sans-serif; background: #f5f5f5; }
+                .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 16px; }
+                .header { background: #2c3e50; color: white; padding: 30px; text-align: center; }
+                .code { font-size: 48px; text-align: center; padding: 30px; background: #f0f0f0; margin: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h2>تأكيد البريد الإلكتروني</h2>
+                </div>
+                <div class='content'>
+                    <h3>مرحباً $name!</h3>
+                    <p>رمز التأكيد الخاص بك هو:</p>
+                    <div class='code'>$code</div>
+                    <p>هذا الرمز صالح لمدة 10 دقائق.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        ";
+        
+        Mail::html($html, function ($message) use ($email) {
+            $message->to($email)->subject('تأكيد البريد الإلكتروني - فرصة عمل');
+        });
+    } catch (\Exception $e) {
+        \Log::error('Failed to send email: ' . $e->getMessage());
+    }
+}
     /**
      * تسجيل الدخول العادي
      */
