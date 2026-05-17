@@ -10,13 +10,15 @@ class Payment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'order_id',
-        'client_id',
-        'worker_id',
+        'user_id',           // ✅ أضف هذا
+        'service_id',        // ✅ أضف هذا
+        'purchase_id',       // ✅ أضف هذا
         'amount',
+        'method',            // ✅ أضف هذا
         'status',
-        'provider',
         'transaction_id',
+        'konnect_payment_url',
+        'receipt_path',
         'paid_at',
     ];
 
@@ -25,32 +27,19 @@ class Payment extends Model
         'amount' => 'decimal:2',
     ];
 
-    public function order()
+    // العلاقات
+    public function user()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(User::class);
     }
 
-    public function client()
+    public function service()
     {
-        return $this->belongsTo(User::class, 'client_id');
+        return $this->belongsTo(Service::class);
     }
 
-    public function worker()
+    public function purchase()
     {
-        return $this->belongsTo(User::class, 'worker_id');
-    }
-
-    public function scopePaid($query)
-    {
-        return $query->where('status', 'paid');
-    }
-
-    public function markAsPaid($transactionId = null)
-    {
-        $this->update([
-            'status' => 'paid',
-            'transaction_id' => $transactionId,
-            'paid_at' => now(),
-        ]);
+        return $this->belongsTo(FeaturedPurchase::class, 'purchase_id');
     }
 }

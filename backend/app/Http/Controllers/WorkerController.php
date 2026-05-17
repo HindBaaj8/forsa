@@ -1,11 +1,14 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\Service;
 use App\Models\ServiceRequest;
 use App\Models\Interest;
 use App\Models\User;
 use App\Models\Notification;
+use App\Models\Order;
+use App\Models\Conversation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -25,26 +28,29 @@ class WorkerController extends Controller
     {
         try {
             $user = Auth::user();
-            
+            \Log::info('Worker ID: ' . $user->id);
             $stats = [
                 'totalEarnings' => 0,
-                'totalServices' => $user->services()->count(),
-                'completedOrders' => $user->ordersAsWorker()->where('status', 'completed')->count(),
+                'totalServices' => Service::where('worker_id', $user->id)->count(),
+                'completedOrders' => Order::where('worker_id', $user->id)->where('status', 'completed')->count(),
                 'rating' => $user->rating ?? 0,
             ];
             
-            $recentOrders = $user->ordersAsWorker()
+            $recentOrders = Order::where('worker_id', $user->id)
                 ->with('service', 'client')
                 ->latest()
                 ->take(5)
                 ->get();
-                
-            $upcomingAppointments = $user->ordersAsWorker()
+            \Log::info('Recent orders count: ' . $recentOrders->count());
+        \Log::info('Recent orders: ', $recentOrders->toArray());
+
+            $upcomingAppointments = Order::where('worker_id', $user->id)
                 ->whereIn('status', ['accepted', 'in_progress'])
                 ->with('service', 'client')
                 ->get();
             
             return response()->json([
+                'success' => true,
                 'stats' => $stats,
                 'recentOrders' => $recentOrders,
                 'upcomingAppointments' => $upcomingAppointments
@@ -52,30 +58,37 @@ class WorkerController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Dashboard error: ' . $e->getMessage());
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json(['success' => false, 'message' => 'Server error'], 500);
         }
     }
 
     /**
      * جلب خدمات المهني
      */
-    public function services(Request $request)
-    {
-        try {
-            $services = Service::where('worker_id', auth()->id())
-                ->with('category')
-                ->latest()
-                ->paginate(10);
+    /**
+ * جلب خدمات المهني
+ */
+public function services(Request $request)
+{
+    try {
+        $services = Service::where('worker_id', auth()->id())
+            ->with('category')
+            ->latest()
+            ->paginate(10);
 
-            return response()->json([
-                'success' => true,
-                'data' => $services
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'services' => $services,  // ✅ من data إلى services
+            'total' => $services->count()
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Services error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Server error: ' . $e->getMessage()
+        ], 500);
     }
-
+}
     /**
      * جلب طلبات المهني (Orders)
      */
@@ -397,38 +410,35 @@ class WorkerController extends Controller
     /**
      * 🔥 قبول طلب من عميل (Request)
      */
-    public function acceptRequest($requestId)
-    {
-        try {
-            $user = Auth::user();
-            
-            if ($user->role !== 'worker') {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-            
-            $serviceRequest = ServiceRequest::findOrFail($requestId);
-            
-            if ($serviceRequest->status !== 'pending') {
-                return response()->json(['message' => 'Request cannot be accepted'], 400);
-            }
-            
-            $interest = Interest::create([
-                'request_id' => $serviceRequest->id,
-                'worker_id' => $user->id,
-                'status' => 'pending',
-                'message' => 'I would like to work on this request'
-            ]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'Request accepted successfully',
-                'data' => $interest
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('acceptRequest error: ' . $e->getMessage());
-            return response()->json(['message' => $e->getMessage()], 500);
+    // فـ WorkerController.php - دالة acceptRequest
+
+public function acceptRequest($requestId)
+{
+    try {
+        $user = Auth::user();
+        $serviceRequest = ServiceRequest::findOrFail($requestId);
+        
+        if ($serviceRequest->status !== 'pending') {
+            return response()->json(['message' => 'Request cannot be accepted'], 400);
         }
+        
+        // ✅ تحديث حالة الطلب
+        $serviceRequest->update(['status' => 'accepted']);
+        
+        // ✅ ✅ ✅ إنشاء Order جديد ✅ ✅ ✅
+        $order = Order::create([
+            'client_id' => $serviceRequest->client_id,
+            'worker_id' => $user->id,
+            'service_id' => null,
+            'request_id' => $serviceRequest->id,
+            'status' => 'accepted',
+            'agreed_price' => $serviceRequest->budget,
+        ]);
+        
+       } catch (\Exception $e) {
+        Log::error('acceptRequest error: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
     }
 
     /**

@@ -15,6 +15,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\WorkerController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\FeaturedController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\EmailVerificationController;
@@ -308,12 +309,6 @@ Route::middleware('auth:sanctum')->prefix('premium')->group(function () {
     Route::get('/status', [PremiumController::class, 'status']);
 });
 
-// Featured Services
-Route::middleware('auth:sanctum')->prefix('featured')->group(function () {
-    Route::post('/buy', [FeaturedController::class, 'buy']);
-    Route::get('/active', [FeaturedController::class, 'getActive']);
-});
-
 // Geolocalisation
 Route::get('/services/nearby', [LocationController::class, 'nearby']);
 Route::get('/workers/nearby', [LocationController::class, 'workersNearby']);
@@ -324,3 +319,25 @@ Route::middleware('auth:sanctum')->prefix('subscriptions')->group(function () {
     Route::post('/checkout', [SubscriptionController::class, 'checkout']);
     Route::post('/webhook', [SubscriptionController::class, 'webhook']);
 });
+
+// Featured Routes
+Route::middleware('auth:sanctum')->prefix('featured')->group(function () {
+    Route::get('/pricing', [FeaturedController::class, 'pricing']);
+    Route::post('/purchase', [FeaturedController::class, 'purchase']);
+    Route::get('/services', [FeaturedController::class, 'getFeaturedServices']);
+});
+
+// Konnect Webhook (بدون middleware)
+Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
+
+// Payments Routes
+Route::middleware('auth:sanctum')->prefix('payments')->group(function () {
+    Route::post('/card/create', [PaymentController::class, 'createCardPayment']);
+    Route::post('/manual/request', [PaymentController::class, 'requestManualPayment']);
+    Route::post('/manual/upload', [PaymentController::class, 'uploadReceipt']);
+});
+
+// Admin approve manual payment
+Route::middleware(['auth:sanctum', 'admin'])->post('/payments/manual/approve/{paymentId}', [PaymentController::class, 'approveManualPayment']);
+
+Route::get('/featured/check-expired', [FeaturedController::class, 'checkExpired']);

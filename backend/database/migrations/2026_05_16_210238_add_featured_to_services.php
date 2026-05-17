@@ -6,23 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('services', function (Blueprint $table) {
-            //
+            $table->boolean('is_featured')->default(false)->after('is_active');
+            $table->timestamp('featured_until')->nullable()->after('is_featured');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('services', function (Blueprint $table) {
-            //
+            $table->dropColumn(['is_featured', 'featured_until']);
         });
     }
 };

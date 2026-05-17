@@ -2,130 +2,159 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Service;
+use App\Models\FeaturedPurchase;
 use App\Models\Payment;
-use App\Models\Order;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth:sanctum');
+        $this->middleware('auth:sanctum')->except(['webhook']);
     }
 
-    // Get payments for authenticated user
-    public function index()
+    /**
+     * إنشاء طلب دفع عبر Konnect (بطاقة بنكية)
+     */
+    public function createCardPayment(Request $request)
     {
-        $user = Auth::user();
-        
-        $payments = Payment::where('client_id', $user->id)
-            ->orWhere('worker_id', $user->id)
-            ->with('order')
-            ->latest()
-            ->paginate(20);
-
-        return response()->json($payments);
-    }
-
-    // Get payment by order
-    public function getByOrder(Order $order)
-    {
-        if (!in_array(Auth::id(), [$order->client_id, $order->worker_id]) && Auth::user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $payment = Payment::where('order_id', $order->id)->first();
-
-        if (!$payment) {
-            return response()->json(['message' => 'Payment not found'], 404);
-        }
-
-        return response()->json($payment);
-    }
-
-    // Create payment intent (for Stripe)
-    public function createPaymentIntent(Request $request)
-    {
-        $validated = $request->validate([
-            'order_id' => 'required|exists:orders,id',
-            'amount' => 'required|numeric|min:0',
-            'provider' => 'required|in:stripe,paypal,cash',
+        $request->validate([
+            'purchase_id' => 'required|exists:featured_purchases,id'
         ]);
 
-        $order = Order::findOrFail($validated['order_id']);
-
-        if ($order->client_id !== Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        if ($order->payment_status === 'paid') {
-            return response()->json(['message' => 'Order already paid'], 422);
-        }
-
-        // Here you would integrate with Stripe/PayPal
-        // For now, return a mock client secret
-        return response()->json([
-            'client_secret' => 'mock_client_secret_' . uniqid(),
-            'amount' => $validated['amount'],
-            'currency' => 'MAD',
-            'order_id' => $order->id
-        ]);
-    }
-
-    // Confirm payment after successful charge
-    public function confirmPayment(Request $request)
-    {
-        $validated = $request->validate([
-            'order_id' => 'required|exists:orders,id',
-            'transaction_id' => 'required|string',
-            'provider' => 'required|in:stripe,paypal,cash',
-        ]);
-
-        $order = Order::findOrFail($validated['order_id']);
-
-        if ($order->client_id !== Auth::id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        if ($order->payment_status === 'paid') {
-            return response()->json(['message' => 'Order already paid'], 422);
-        }
-
-        // Check if payment already exists
-        $existingPayment = Payment::where('order_id', $order->id)->first();
-
-        if ($existingPayment) {
-            return response()->json(['message' => 'Payment already exists'], 422);
-        }
+        $purchase = FeaturedPurchase::findOrFail($request->purchase_id);
+        $service = Service::findOrFail($purchase->service_id);
 
         $payment = Payment::create([
-            'order_id' => $order->id,
-            'client_id' => $order->client_id,
-            'worker_id' => $order->worker_id,
-            'amount' => $order->agreed_price,
-            'status' => 'paid',
-            'provider' => $validated['provider'],
-            'transaction_id' => $validated['transaction_id'],
-            'paid_at' => now(),
+            'user_id' => auth()->id(),
+            'service_id' => $service->id,
+            'purchase_id' => $purchase->id,
+            'amount' => $purchase->amount,
+            'method' => 'card',
+            'status' => 'pending'
         ]);
 
-        $order->update(['payment_status' => 'paid']);
+        $konnectResponse = Http::withHeaders([
+            'X-API-Key' => env('KONNECT_API_KEY'),
+            'Content-Type' => 'application/json'
+        ])->post('https://api.konnect.network/v1/payments', [
+            'amount' => $purchase->amount,
+            'currency' => 'MAD',
+            'reference' => $payment->id,
+            'description' => "Featured service: {$service->title}",
+            'success_url' => env('APP_URL') . '/payment/success',
+            'error_url' => env('APP_URL') . '/payment/error',
+            'webhook_url' => env('APP_URL') . '/api/payments/webhook'
+        ]);
 
-        return response()->json($payment, 201);
-    }
+        if ($konnectResponse->successful()) {
+            $paymentUrl = $konnectResponse->json('payment_url');
+            $payment->update([
+                'konnect_payment_url' => $paymentUrl,
+                'transaction_id' => $konnectResponse->json('id')
+            ]);
 
-    // Get payment status
-    public function status(Order $order)
-    {
-        if (!in_array(Auth::id(), [$order->client_id, $order->worker_id]) && Auth::user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json([
+                'success' => true,
+                'payment_url' => $paymentUrl,
+                'payment_id' => $payment->id
+            ]);
         }
 
         return response()->json([
-            'order_id' => $order->id,
-            'payment_status' => $order->payment_status,
-            'amount' => $order->agreed_price,
+            'success' => false,
+            'message' => 'فشل إنشاء طلب الدفع'
+        ], 500);
+    }
+
+    /**
+     * Webhook من Konnect
+     */
+    public function webhook(Request $request)
+    {
+        Log::info('Konnect webhook received:', $request->all());
+
+        $transactionId = $request->input('id');
+        $status = $request->input('status');
+
+        $payment = Payment::where('transaction_id', $transactionId)->first();
+
+        if (!$payment) {
+            Log::error('Payment not found: ' . $transactionId);
+            return response()->json(['error' => 'Payment not found'], 404);
+        }
+
+        if ($status === 'completed') {
+            $payment->update(['status' => 'paid', 'paid_at' => now()]);
+        } else {
+            $payment->update(['status' => 'failed']);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * طلب دفع يدوي (تحويل بنكي)
+     */
+    public function requestManualPayment(Request $request)
+{
+    $request->validate([
+        'purchase_id' => 'required|exists:featured_purchases,id'
+    ]);
+
+    $user = auth()->user();
+    $purchase = FeaturedPurchase::findOrFail($request->purchase_id);
+    $service = Service::findOrFail($purchase->service_id);
+
+    $payment = Payment::create([
+        'user_id' => $user->id,
+        'service_id' => $service->id,
+        'purchase_id' => $purchase->id,
+        'amount' => $purchase->amount,
+        'method' => 'manual',
+        'status' => 'pending'
+    ]);
+
+    // ✅ معلومات RIB كاملة
+    $bankInfo = [
+        'bank_name' => 'CIH Bank',
+        'account_name' => 'Forsa Oumal',
+        'account_number' => '123 456 789 001',
+        'rib' => '123456789012345678901234',
+        'swift' => 'CIHMMAMC',
+        'amount' => $purchase->amount,
+        'reference' => 'REF-' . $purchase->id,
+        'phone' => '+212 6 12 34 56 78'
+    ];
+
+    return response()->json([
+        'success' => true,
+        'payment_id' => $payment->id,
+        'bank_info' => $bankInfo
+    ]);
+}    
+
+    public function approveManualPayment($paymentId)
+    {
+        $payment = Payment::findOrFail($paymentId);
+        
+        if (!$payment->receipt_path) {
+            return response()->json(['success' => false, 'message' => 'لا يوجد إثبات دفع'], 422);
+        }
+
+        if ($payment->status === 'paid') {
+            return response()->json(['success' => false, 'message' => 'تم قبول الدفع مسبقاً'], 422);
+        }
+
+        $payment->update(['status' => 'paid', 'paid_at' => now()]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم قبول الدفع'
         ]);
     }
 }

@@ -11,81 +11,48 @@ class ServiceController extends Controller
      * Display a listing of approved services (public)
      */
     public function index(Request $request)
-    {
-        try {
-            $query = Service::with(['worker', 'category'])
-                ->where('approval_status', 'approved')
-                ->where('is_active', true);
+{
+    try {
+        $query = Service::with(['worker', 'category'])
+            ->where('approval_status', 'approved')
+            ->where('is_active', true);
 
-            // Filter by category
-            if ($request->has('category_id')) {
-                $query->where('category_id', $request->category_id);
-            }
-
-            // Filter by city
-            if ($request->has('city')) {
-                $query->where('location', 'like', '%' . $request->city . '%');
-            }
-
-            // Search by title
-            if ($request->has('search')) {
-                $query->where('title', 'like', '%' . $request->search . '%');
-            }
-
-            // Filter by price range
-            if ($request->has('min_price')) {
-                $query->where('price', '>=', $request->min_price);
-            }
-            if ($request->has('max_price')) {
-                $query->where('price', '<=', $request->max_price);
-            }
-
-            // Sorting
-            $sortBy = $request->get('sort_by', 'latest');
-            switch ($sortBy) {
-                case 'price_low':
-                    $query->orderBy('price', 'asc');
-                    break;
-                case 'price_high':
-                    $query->orderBy('price', 'desc');
-                    break;
-                case 'oldest':
-                    $query->oldest();
-                    break;
-                default:
-                    $query->latest();
-                    break;
-            }
-
-            $perPage = $request->get('per_page', 20);
-            $services = $query->paginate($perPage);
-
-            return response()->json([
-                'success' => true,
-                'data' => $services
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Services index error: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Server error'
-            ], 500);
+        // Filters
+        if ($request->has('category_id')) {
+            $query->where('category_id', $request->category_id);
         }
-    }
-
-    /**
-     * Display the specified service
-     */
-    public function show(Service $service)
-    {
-        if ($service->approval_status !== 'approved') {
-            return response()->json(['message' => 'Service not found'], 404);
+        if ($request->has('city')) {
+            $query->where('location', 'like', '%' . $request->city . '%');
         }
-        return response()->json([
-            'success' => true,
-            'data' => $service->load('worker', 'category')
-        ]);
-    }
+        if ($request->has('search')) {
+            $query->where('title', 'like', '%' . $request->search . '%');
+        }
+        if ($request->has('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+        if ($request->has('max_price')) {
+            $query->where('price', '<=', $request->max_price);
+        }
 
+        // ✅ Featured first
+        $query->orderByRaw('CASE WHEN is_featured = 1 AND featured_until > NOW() THEN 0 ELSE 1 END');
+        
+        // Sorting
+        $sortBy = $request->get('sort_by', 'latest');
+        switch ($sortBy) {
+            case 'price_low': $query->orderBy('price', 'asc'); break;
+            case 'price_high': $query->orderBy('price', 'desc'); break;
+            case 'oldest': $query->oldest(); break;
+            default: $query->latest(); break;
+        }
+
+        $services = $query->paginate($request->get('per_page', 20));
+
+        return response()->json(['success' => true, 'data' => $services]);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Server error'], 500);
+    }
+}
     /**
      * Store a newly created service
      */
