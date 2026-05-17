@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Service;
 use App\Models\FeaturedPurchase;
 use App\Models\Payment;
+use App\Models\User;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -140,8 +142,6 @@ class PaymentController extends Controller
 /**
  * رفع إثبات الدفع (للمدفوعات اليدوية)
  */
-use App\Models\Notification;
-use App\Models\User;
 
 public function uploadReceipt(Request $request)
 {
@@ -218,4 +218,27 @@ public function uploadReceipt(Request $request)
             'message' => 'تم قبول الدفع'
         ]);
     }
+    public function getPendingManualPayments()
+{
+    $payments = Payment::with('user')
+        ->where('method', 'manual')
+        ->where('status', 'pending')
+        ->whereNotNull('receipt_path')
+        ->latest()
+        ->get()
+        ->map(function($payment) {
+            $payment->receipt_url = asset('storage/' . $payment->receipt_path);
+            return $payment;
+        });
+
+    return response()->json(['success' => true, 'data' => $payments]);
+}
+
+public function rejectManualPayment($paymentId)
+{
+    $payment = Payment::findOrFail($paymentId);
+    $payment->update(['status' => 'rejected']);
+
+    return response()->json(['success' => true, 'message' => 'تم رفض الدفع']);
+}
 }
