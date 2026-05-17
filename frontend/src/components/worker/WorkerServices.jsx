@@ -1,13 +1,14 @@
 // components/worker/WorkerServices.jsx
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Edit, Trash2, Power } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, Star } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../common/Modal';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { getWorkerServices, createService, updateService, deleteService, toggleService } from '../../features/worker/workerSlice';
+import BuyFeatured from './BuyFeatured';
 import { toast } from 'react-hot-toast';
 import '../../styles/Dashboard.css';
 
@@ -26,6 +27,8 @@ export default function WorkerServices() {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [showFeaturedModal, setShowFeaturedModal] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
   const [formData, setFormData] = useState({ 
     title: '', 
     description: '', 
@@ -36,10 +39,15 @@ export default function WorkerServices() {
   });
   const [errors, setErrors] = useState({});
 
-  // ✅ servicesArray مرة واحدة فقط
   const servicesArray = Array.isArray(services) ? services : [];
 
-  // ✅ Force refresh when component mounts
+  // ✅ أضف هاد useEffect للتصحيح
+  useEffect(() => {
+    console.log('🔍 DEBUG - services from Redux:', services);
+    console.log('🔍 DEBUG - servicesArray length:', servicesArray.length);
+    console.log('🔍 DEBUG - services IDs:', servicesArray.map(s => s.id));
+  }, [services, servicesArray]);
+
   useEffect(() => {
     const loadServices = async () => {
       console.log('🔄 Loading services...');
@@ -50,7 +58,6 @@ export default function WorkerServices() {
     loadServices();
   }, [dispatch]);
 
-  // ✅ Watch for services changes
   useEffect(() => {
     console.log('✅ Services in Redux updated:', services);
   }, [services]);
@@ -61,7 +68,19 @@ export default function WorkerServices() {
       toast.error(typeof error === 'string' ? error : 'حدث خطأ');
     }
   }, [error]);
-
+// أضف هاد useEffect
+useEffect(() => {
+  const checkServices = async () => {
+    const token = localStorage.getItem('token');
+    const response = await fetch('http://localhost:8000/api/worker/services', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    console.log('🔍 Direct API call:', data);
+    console.log('🔍 Services in response:', data.services || data.data);
+  };
+  checkServices();
+}, []);
   const validate = () => {
     const e = {};
     if (!formData.title.trim()) e.title = 'العنوان مطلوب';
@@ -139,6 +158,10 @@ export default function WorkerServices() {
     await dispatch(getWorkerServices());
   };
 
+  const isFeaturedActive = (service) => {
+    return service.is_featured && service.featured_until && new Date(service.featured_until) > new Date();
+  };
+
   if (isLoading) return <LoadingSpinner />;
 
   return (
@@ -165,14 +188,18 @@ export default function WorkerServices() {
         </div>
       ) : (
         <div className="services-grid">
-          {servicesArray.map(service => {
+          {servicesArray.map((service, index) => {
             const category = CATEGORIES.find(c => c.id === service.category_id);
+            const isFeatured = isFeaturedActive(service);
             return (
-              <div key={service.id} className="service-card">
+              <div key={service.id || index} className={`service-card ${isFeatured ? 'featured' : ''}`}>
                 <div className="service-card__header">
                   <div className="service-card__icon">{category?.icon || '🔧'}</div>
                   <div>
-                    <h3 className="service-card__title">{service.title}</h3>
+                    <h3 className="service-card__title">
+                      {service.title}
+                      {isFeatured && <span className="featured-badge">⭐ مميز</span>}
+                    </h3>
                     <div className="service-card__category">{category?.label}</div>
                   </div>
                   <button className={`service-card__toggle ${service.is_active ? 'active' : ''}`} onClick={() => handleToggle(service.id)}>
@@ -187,6 +214,18 @@ export default function WorkerServices() {
                 <div className="service-card__actions">
                   <button className="btn btn--ghost btn--sm" onClick={() => handleEdit(service)}><Edit size={14} /> تعديل</button>
                   <button className="btn btn--danger btn--sm" onClick={() => handleDelete(service.id, service.title)}><Trash2 size={14} /> حذف</button>
+                  <button 
+                    className={`btn btn--sm ${isFeatured ? 'btn--success' : 'btn--gold'}`}
+                    onClick={() => {
+                      setSelectedService(service);
+                      setShowFeaturedModal(true);
+                    }}
+                    disabled={isFeatured}
+                    title={isFeatured ? `مميز حتى ${new Date(service.featured_until).toLocaleDateString('ar-MA')}` : 'مميز خدمتك'}
+                  >
+                    <Star size={14} /> 
+                    {isFeatured ? 'مميزة' : 'مميز'}
+                  </button>
                 </div>
               </div>
             );
@@ -196,24 +235,42 @@ export default function WorkerServices() {
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingService ? 'تعديل الخدمة' : 'إضافة خدمة جديدة'} onSave={handleSave} saveText={editingService ? 'حفظ التغييرات' : 'إضافة الخدمة'}>
         <Input label="عنوان الخدمة" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} error={errors.title} required />
+        
         <div className="form-group">
           <label className="form-label">وصف الخدمة *</label>
           <textarea className={`form-input ${errors.description ? 'err' : ''}`} rows="4" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="وصف تفصيلي للخدمة..." />
           {errors.description && <span className="form-err">{errors.description}</span>}
         </div>
+        
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">نوع الخدمة *</label>
             <select className={`form-input ${errors.category ? 'err' : ''}`} value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
               <option value="">اختر نوع الخدمة</option>
-              {CATEGORIES.map(c => (<option key={c.value} value={c.value}>{c.icon} {c.label}</option>))}
+              {CATEGORIES.map(c => (
+                <option key={c.id} value={c.value}>{c.icon} {c.label}</option>
+              ))}
             </select>
             {errors.category && <span className="form-err">{errors.category}</span>}
           </div>
+          
           <Input label="السعر (درهم/ساعة)" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} error={errors.price} required />
         </div>
+        
         <Input label="المدينة" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} error={errors.city} required />
       </Modal>
+
+      {showFeaturedModal && (
+        <BuyFeatured 
+          serviceId={selectedService?.id}
+          serviceTitle={selectedService?.title}
+          onClose={() => setShowFeaturedModal(false)}
+          onSuccess={() => {
+            setShowFeaturedModal(false);
+            dispatch(getWorkerServices());
+          }}
+        />
+      )}
     </WorkerLayout>
   );
 }

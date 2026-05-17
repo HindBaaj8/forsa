@@ -11,6 +11,7 @@ export const getWorkerDashboard = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/worker/dashboard');
+      console.log('📦 Dashboard API Response:', response.data);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to load dashboard');
@@ -26,9 +27,15 @@ export const getWorkerServices = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/worker/services');
-      const services = response.data?.data || response.data || [];
-      return services;
+      console.log('📦 API Response:', response.data);
+      
+      // ✅ التصحيح: استخرج services.data
+      const servicesData = response.data?.services?.data || response.data?.data || [];
+      console.log('✅ Services extracted:', servicesData.length);
+      
+      return servicesData;
     } catch (error) {
+      console.error('❌ Error:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to load services');
     }
   }

@@ -341,3 +341,8 @@ Route::middleware('auth:sanctum')->prefix('payments')->group(function () {
 Route::middleware(['auth:sanctum', 'admin'])->post('/payments/manual/approve/{paymentId}', [PaymentController::class, 'approveManualPayment']);
 
 Route::get('/featured/check-expired', [FeaturedController::class, 'checkExpired']);
+// Admin - جلب الدفعات اليدوية المعلقة
+Route::middleware(['auth:sanctum', 'admin'])->get('/admin/payments/manual/pending', [PaymentController::class, 'getPendingManualPayments']);
+
+// رفض الدفع اليدوي
+Route::middleware(['auth:sanctum', 'admin'])->post('/payments/manual/reject/{paymentId}', [PaymentController::class, 'rejectManualPayment']);

@@ -37,7 +37,6 @@ export default function WorkerDashboard() {
 
   return (
     <WorkerLayout title="الرئيسية">
-      {/* Welcome Section */}
       <div className="welcome-section">
         <div>
           <h1 className="welcome-section__title">مرحباً, {user?.first_name} 👋</h1>
@@ -50,92 +49,69 @@ export default function WorkerDashboard() {
 
       {/* Stats Grid */}
       <div className="stats-grid">
-        <StatCard 
-          title="إجمالي الأرباح" 
-          value={`${stats.totalEarnings || 0} درهم`} 
-          icon={DollarSign} 
-          color="gold" 
-        />
-        <StatCard 
-          title="خدماتي" 
-          value={stats.totalServices || 0} 
-          icon={ShoppingBag} 
-          color="navy" 
-        />
-        <StatCard 
-          title="طلبات مكتملة" 
-          value={stats.completedOrders || 0} 
-          icon={CheckCircle} 
-          color="green" 
-        />
-        <StatCard 
-          title="التقييم" 
-          value={stats.rating || 0} 
-          icon={Star} 
-          color="yellow" 
-        />
+        <StatCard title="إجمالي الأرباح" value={`${stats.totalEarnings || 0} درهم`} icon={DollarSign} color="gold" />
+        <StatCard title="خدماتي" value={stats.totalServices || 0} icon={ShoppingBag} color="navy" />
+        <StatCard title="طلبات مكتملة" value={stats.completedOrders || 0} icon={CheckCircle} color="green" />
+        <StatCard title="التقييم" value={stats.rating || 0} icon={Star} color="yellow" />
       </div>
 
-      {/* Two Columns */}
-      <div className="grid-2">
-        {/* Recent Orders */}
-        <div className="card">
-          <div className="card-title">
-            آخر الطلبات
-            <Link to="/worker/orders" className="card-link">عرض الكل →</Link>
-          </div>
-          {dashboard?.recentOrders?.length === 0 ? (
-            <div className="empty-state">
-              <Briefcase size={48} />
-              <p>لا توجد طلبات بعد</p>
-              <Link to="/worker/orders">
-                <button className="btn btn--navy btn--sm">عرض الطلبات</button>
-              </Link>
-            </div>
-          ) : (
-            dashboard?.recentOrders?.slice(0, 5).map(order => (
-              <div key={order.id} className="job-item">
-                <div className="job-av">{order.service?.title?.[0] || '📋'}</div>
-                <div>
-                  <div className="job-item__name">{order.service?.title}</div>
-                  <div className="job-item__meta">{order.client?.first_name} {order.client?.last_name} • {order.status}</div>
-                </div>
-                <div className="job-item__price">{order.agreed_price || order.price} درهم</div>
-              </div>
-            ))
-          )}
+      {/* ✅ آخر الطلبات (Orders) */}
+      <div className="card">
+        <div className="card-title">
+          آخر الطلبات
+          <Link to="/worker/orders" className="card-link">عرض الكل →</Link>
         </div>
-
-        {/* Upcoming Appointments */}
-        <div className="card">
-          <div className="card-title">
-            المواعيد القادمة
-            <Link to="/worker/schedule" className="card-link">عرض الكل →</Link>
+        {dashboard?.recentOrders?.length === 0 ? (
+          <div className="empty-state">
+            <Briefcase size={48} />
+            <p>لا توجد طلبات بعد</p>
+            <Link to="/worker/orders">
+              <button className="btn btn--navy btn--sm">عرض الطلبات</button>
+            </Link>
           </div>
-          {dashboard?.upcomingAppointments?.length === 0 ? (
-            <div className="empty-state">
-              <Calendar size={48} />
-              <p>لا توجد مواعيد قادمة</p>
-              <Link to="/worker/orders">
-                <button className="btn btn--navy btn--sm">استعرض الطلبات</button>
-              </Link>
-            </div>
-          ) : (
-            dashboard?.upcomingAppointments?.slice(0, 5).map(app => (
-              <div key={app.id} className="job-item">
-                <div className="job-av">📅</div>
-                <div>
-                  <div className="job-item__name">{app.service?.title}</div>
-                  <div className="job-item__meta">{app.client?.first_name} {app.client?.last_name}</div>
-                </div>
-                <div className="job-item__price">{app.status === 'accepted' ? 'قيد الانتظار' : 'قيد التنفيذ'}</div>
+        ) : (
+          dashboard?.recentOrders?.slice(0, 5).map(order => (
+            <div key={order.id} className="job-item">
+              <div className="job-av">{order.service?.title?.[0] || '📋'}</div>
+              <div>
+                <div className="job-item__name">{order.service?.title}</div>
+                <div className="job-item__meta">{order.client?.first_name} {order.client?.last_name} • {order.status === 'completed' ? 'مكتمل' : order.status === 'accepted' ? 'مقبول' : 'قيد التنفيذ'}</div>
               </div>
-            ))
-          )}
-        </div>
+              <div className="job-item__price">{order.agreed_price || order.price} درهم</div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Quick Actions */}
+      {/* المواعيد القادمة */}
+      <div className="card">
+        <div className="card-title">
+          المواعيد القادمة
+          <Link to="/worker/schedule" className="card-link">عرض الكل →</Link>
+        </div>
+        {dashboard?.upcomingAppointments?.length === 0 ? (
+          <div className="empty-state">
+            <Calendar size={48} />
+            <p>لا توجد مواعيد قادمة</p>
+            <Link to="/worker/orders">
+              <button className="btn btn--navy btn--sm">استعرض الطلبات</button>
+            </Link>
+          </div>
+        ) : (
+          dashboard?.upcomingAppointments?.slice(0, 5).map(app => (
+            <div key={app.id} className="job-item">
+              <div className="job-av">📅</div>
+              <div>
+                <div className="job-item__name">{app.service?.title}</div>
+                <div className="job-item__meta">{app.client?.first_name} {app.client?.last_name}</div>
+              </div>
+              <div className="job-item__price">{app.status === 'accepted' ? 'قيد الانتظار' : 'قيد التنفيذ'}</div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* نصائح */}
       <div className="tips-card">
         <div className="tips-card__icon">💡</div>
         <div>

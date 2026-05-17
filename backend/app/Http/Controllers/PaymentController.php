@@ -140,6 +140,9 @@ class PaymentController extends Controller
 /**
  * رفع إثبات الدفع (للمدفوعات اليدوية)
  */
+use App\Models\Notification;
+use App\Models\User;
+
 public function uploadReceipt(Request $request)
 {
     try {
@@ -149,8 +152,6 @@ public function uploadReceipt(Request $request)
         ]);
 
         $purchase = FeaturedPurchase::findOrFail($request->purchase_id);
-        
-        // جلب الـ payment المرتبط بهذا purchase
         $payment = Payment::where('purchase_id', $purchase->id)->first();
 
         if (!$payment) {
@@ -168,6 +169,27 @@ public function uploadReceipt(Request $request)
             'status' => 'pending'
         ]);
 
+        // ✅ 🔥 إرسال إشعار للمسؤول (Admin) 🔥 ✅
+        $admins = User::where('role', 'admin')->get();
+        
+        foreach ($admins as $admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'type' => 'manual_payment_receipt',
+                'title' => '📎 إثبات دفع جديد في انتظار المراجعة',
+                'message' => "المستخدم {$payment->user->first_name} {$payment->user->last_name} قام برفع إثبات دفع للميزة المميزة. المبلغ: {$payment->amount} درهم",
+                'data' => json_encode([
+                    'payment_id' => $payment->id,
+                    'purchase_id' => $purchase->id,
+                    'user_id' => $payment->user_id,
+                    'amount' => $payment->amount,
+                    'receipt_url' => asset('storage/' . $path)
+                ]),
+                'link' => '/admin/payments/manual/' . $payment->id,
+                'is_read' => false
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'تم رفع الإثبات، في انتظار المراجعة'
@@ -177,8 +199,7 @@ public function uploadReceipt(Request $request)
         \Log::error('Upload receipt error: ' . $e->getMessage());
         return response()->json(['success' => false, 'message' => 'حدث خطأ: ' . $e->getMessage()], 500);
     }
-}
-    public function approveManualPayment($paymentId)
+}    public function approveManualPayment($paymentId)
     {
         $payment = Payment::findOrFail($paymentId);
         

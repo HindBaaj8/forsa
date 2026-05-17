@@ -20,7 +20,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import RequestOtpReset from './components/auth/RequestOtpReset';
 import VerifyOtp from './components/auth/VerifyOtp';
 import ResetPasswordOtp from './components/auth/ResetPasswordOtp';
-
+import EmailVerification from './components/auth/EmailVerification';
 // Admin
 import AdminApp from './pages/AdminApp';
 
@@ -76,7 +76,7 @@ function App() {
       <Route path="/forgot-password" element={<RequestOtpReset />} />
       <Route path="/verify-otp" element={<VerifyOtp />} />
       <Route path="/reset-password-otp" element={<ResetPasswordOtp />} />
-
+      <Route path="/verify-email" element={<EmailVerification />} />
       {/* ========== ADMIN ROUTES ========== */}
       <Route path="/admin/*" element={
         <ProtectedRoute allowedRoles={['admin']}>

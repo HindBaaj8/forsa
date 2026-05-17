@@ -64,19 +64,20 @@ export default function Auth() {
     }
   };
 
- const handleRegister = async (e) => {
-  e.preventDefault();
-  
-  console.log('📤 Register data:', {  // ✅ أضف هذا
-    first_name: firstName,
-    last_name: lastName,
-    email: email,
-    phone: phone,
-    city: city,
-    password: password,
-    password_confirmation: confirmPassword,
-    role: role,
-  });
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    console.log('📤 Register data:', {
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      phone: phone,
+      city: city,
+      password: password,
+      password_confirmation: confirmPassword,
+      role: role,
+    });
     
     // Validation
     const newErrors = {};
@@ -107,24 +108,38 @@ export default function Auth() {
         role: role,
       });
       
-      const { token, user } = response.data;
+      console.log('Register response:', response.data);
       
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      toast.success('تم إنشاء الحساب بنجاح');
-      
-      // التوجيه حسب الدور
-      if (user.role === 'client') {
-        window.location.href = '/client';
-      } else if (user.role === 'worker') {
-        window.location.href = '/worker';
-      } else if (user.role === 'admin') {
-        window.location.href = '/admin';
+      // ✅ إذا كان التسجيل ناجح
+      if (response.data.user || response.data.success) {
+        // حفظ البريد الإلكتروني وكلمة المرور مؤقتاً
+        sessionStorage.setItem('pending_email', email);
+        sessionStorage.setItem('pending_password', password);
+        
+        toast.success('تم التسجيل بنجاح! يرجى تأكيد بريدك الإلكتروني');
+        
+        // ✅ التوجيه إلى صفحة تأكيد البريد
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`);
       } else {
-        window.location.href = '/';
+        // التسجيل العادي مع token مباشر
+        const { token, user } = response.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        toast.success('تم إنشاء الحساب بنجاح');
+        
+        // التوجيه حسب الدور
+        if (user.role === 'client') {
+          window.location.href = '/client';
+        } else if (user.role === 'worker') {
+          window.location.href = '/worker';
+        } else if (user.role === 'admin') {
+          window.location.href = '/admin';
+        } else {
+          window.location.href = '/';
+        }
       }
     } catch (error) {
+      console.error('Register error:', error.response?.data);
       const message = error.response?.data?.message || error.response?.data?.errors || 'فشل إنشاء الحساب';
       if (typeof message === 'object') {
         setErrors(message);
@@ -204,7 +219,6 @@ export default function Auth() {
                 <label className="form-check">
                   <input type="checkbox" /> تذكّرني
                 </label>
-                {/* ✅ زر "نسيت كلمة المرور" يروح لـ /forgot-password */}
                 <button 
                   type="button" 
                   className="form-link" 
