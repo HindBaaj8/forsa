@@ -137,7 +137,47 @@ class PaymentController extends Controller
         'bank_info' => $bankInfo
     ]);
 }    
+/**
+ * رفع إثبات الدفع (للمدفوعات اليدوية)
+ */
+public function uploadReceipt(Request $request)
+{
+    try {
+        $request->validate([
+            'purchase_id' => 'required|exists:featured_purchases,id',
+            'receipt' => 'required|image|mimes:jpg,jpeg,png,pdf|max:2048'
+        ]);
 
+        $purchase = FeaturedPurchase::findOrFail($request->purchase_id);
+        
+        // جلب الـ payment المرتبط بهذا purchase
+        $payment = Payment::where('purchase_id', $purchase->id)->first();
+
+        if (!$payment) {
+            return response()->json(['message' => 'طلب الدفع غير موجود'], 404);
+        }
+
+        if ($payment->user_id !== auth()->id()) {
+            return response()->json(['message' => 'غير مصرح'], 403);
+        }
+
+        $path = $request->file('receipt')->store('payment_receipts', 'public');
+
+        $payment->update([
+            'receipt_path' => $path,
+            'status' => 'pending'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم رفع الإثبات، في انتظار المراجعة'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Upload receipt error: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'حدث خطأ: ' . $e->getMessage()], 500);
+    }
+}
     public function approveManualPayment($paymentId)
     {
         $payment = Payment::findOrFail($paymentId);
