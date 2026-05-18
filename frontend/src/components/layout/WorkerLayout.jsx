@@ -47,6 +47,22 @@ export default function WorkerLayout({ children, title }) {
       
       <div className={`sidebar ${mobileOpen ? 'open' : ''}`}>
         <Sidebar role={user?.role} onClose={() => setMobileOpen(false)} />
+        
+        {/* ✅ إضافة رابط Premium مباشرة فـ Layout إذا Sidebar ما عندوش */}
+        <div className="sidebar-footer">
+          <a 
+            href="/worker/subscribe" 
+            className="premium-link"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/worker/subscribe';
+            }}
+          >
+            <span className="premium-icon">⭐</span>
+            <span className="premium-text">اشتراك Premium</span>
+            <span className="premium-badge-new">جديد</span>
+          </a>
+        </div>
       </div>
       
       <div className="worker-main">
@@ -143,6 +159,64 @@ export default function WorkerLayout({ children, title }) {
         @media (max-width: 768px) {
           .page-content {
             padding: 16px;
+          }
+        }
+        
+        /* Sidebar Footer - Premium Link */
+        .sidebar-footer {
+          margin-top: auto;
+          padding: 20px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .premium-link {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1));
+          border-radius: 12px;
+          text-decoration: none;
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+        
+        .premium-link:hover {
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 165, 0, 0.2));
+          transform: translateX(-5px);
+        }
+        
+        .premium-icon {
+          font-size: 22px;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+        
+        .premium-text {
+          flex: 1;
+          font-weight: 600;
+          font-size: 14px;
+          color: #FFD700;
+          letter-spacing: 0.5px;
+        }
+        
+        .premium-badge-new {
+          background: linear-gradient(135deg, #FFD700, #FFA500);
+          color: #2c3e50;
+          font-size: 10px;
+          font-weight: bold;
+          padding: 2px 8px;
+          border-radius: 20px;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.05);
           }
         }
         

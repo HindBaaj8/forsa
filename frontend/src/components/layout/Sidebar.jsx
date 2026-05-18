@@ -20,7 +20,8 @@ import {
   Bell,
   Home,
   Star,
-  CreditCard
+  CreditCard,
+  Crown
 } from 'lucide-react';
 import { logout } from '../../features/auth/authSlice';
 import { selectUser } from '../../features/auth/authSelectors';
@@ -29,15 +30,12 @@ export default function Sidebar({ role, onClose }) {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector(selectUser);
-  // 🔥 أضف حالة محلية للمستخدم
   const [currentUser, setCurrentUser] = useState(user);
 
-  // 🔥 تحديث المستخدم المحلي عندما يتغير user في Redux
   useEffect(() => {
     setCurrentUser(user);
   }, [user]);
 
-  // 🔥 استمع للتغييرات في localStorage (إذا حدث تحديث من مكان آخر)
   useEffect(() => {
     const handleStorageChange = () => {
       const storedUser = localStorage.getItem('user');
@@ -60,18 +58,16 @@ export default function Sidebar({ role, onClose }) {
     { path: '/client/settings', icon: Settings, label: 'الإعدادات' },
   ];
 
-  // components/layout/Sidebar.jsx
-
-const workerMenus = [
-  { path: '/worker', icon: LayoutDashboard, label: 'الرئيسية' },
-  { path: '/worker/services', icon: ShoppingBag, label: 'خدماتي' },
-  { path: '/worker/orders', icon: Package, label: 'طلبات العملاء' },  // ✅ تأكد
-  { path: '/worker/messages', icon: MessageCircle, label: 'الرسائل' },  // ✅ تأكد
-  { path: '/worker/earnings', icon: DollarSign, label: 'الأرباح' },
-  { path: '/worker/schedule', icon: Calendar, label: 'جدول المواعيد' },
-  { path: '/worker/profile', icon: User, label: 'الملف الشخصي' },
-  { path: '/worker/settings', icon: Settings, label: 'الإعدادات' },
-];
+  const workerMenus = [
+    { path: '/worker', icon: LayoutDashboard, label: 'الرئيسية' },
+    { path: '/worker/services', icon: ShoppingBag, label: 'خدماتي' },
+    { path: '/worker/orders', icon: Package, label: 'طلبات العملاء' },
+    { path: '/worker/messages', icon: MessageCircle, label: 'الرسائل' },
+    { path: '/worker/earnings', icon: DollarSign, label: 'الأرباح' },
+    { path: '/worker/schedule', icon: Calendar, label: 'جدول المواعيد' },
+    { path: '/worker/profile', icon: User, label: 'الملف الشخصي' },
+    { path: '/worker/settings', icon: Settings, label: 'الإعدادات' },
+  ];
 
   const adminMenus = [
     { path: '/admin', icon: BarChart3, label: 'لوحة التحكم' },
@@ -92,7 +88,6 @@ const workerMenus = [
     if (onClose) onClose();
   };
 
-  // ✅ تحسين عرض الحروف الأولى (يستخدم currentUser بدل user)
   const getInitials = () => {
     if (!currentUser) return 'م';
     const firstInitial = currentUser.first_name?.[0] || '';
@@ -106,7 +101,6 @@ const workerMenus = [
     return 'مدير';
   };
 
-  // ✅ الحصول على الصورة الرمزية (يستخدم currentUser)
   const getAvatar = () => {
     if (currentUser?.avatar) {
       return currentUser.avatar;
@@ -114,7 +108,6 @@ const workerMenus = [
     return null;
   };
 
-  // ✅ الحصول على الاسم الكامل
   const getFullName = () => {
     if (!currentUser) return 'مرحباً';
     return `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || 'مستخدم';
@@ -148,9 +141,22 @@ const workerMenus = [
             </NavLink>
           );
         })}
+        
+        {/* ✅ إضافة Premium Link للـ Worker فقط */}
+        {role === 'worker' && (
+          <NavLink
+            to="/worker/subscribe"
+            className={({ isActive }) => `sidebar__item premium-menu-item ${isActive ? 'active' : ''}`}
+            onClick={() => onClose && onClose()}
+          >
+            <Crown size={18} className="sidebar__item-icon premium-icon" />
+            <span>⭐ اشتراك Premium</span>
+            {!currentUser?.is_premium && <span className="premium-badge-new">جديد</span>}
+          </NavLink>
+        )}
       </div>
 
-      {/* User Section - 🔥 يتغير تلقائياً عند التعديل */}
+      {/* User Section */}
       <div className="sidebar__user">
         <div className="sidebar__avatar">
           {getAvatar() ? (
@@ -162,6 +168,10 @@ const workerMenus = [
         <div>
           <div className="sidebar__user-name">
             {getFullName()}
+            {/* ✅ عرض badge Premium فـ الملف الشخصي إذا كان بريميوم */}
+            {role === 'worker' && currentUser?.is_premium && (
+              <span className="user-premium-badge">⭐</span>
+            )}
           </div>
           <div className="sidebar__user-role">{getRoleName()}</div>
         </div>
@@ -192,11 +202,64 @@ const workerMenus = [
           font-weight: 800;
           color: #fff;
           margin-bottom: 4px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        
+        .user-premium-badge {
+          font-size: 12px;
+          background: linear-gradient(135deg, #FFD700, #FFA500);
+          padding: 2px 6px;
+          border-radius: 20px;
+          margin-left: 6px;
         }
         
         .sidebar__user-role {
           font-size: 11px;
           color: rgba(255, 255, 255, 0.6);
+        }
+        
+        /* ✅ Premium Menu Item Styles */
+        .premium-menu-item {
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.08));
+          margin-top: 8px;
+          border-radius: 12px !important;
+        }
+        
+        .premium-menu-item:hover {
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 165, 0, 0.15));
+        }
+        
+        .premium-menu-item.active {
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 165, 0, 0.2));
+          border-right: 3px solid #FFD700;
+        }
+        
+        .premium-icon {
+          color: #FFD700 !important;
+        }
+        
+        .premium-badge-new {
+          background: linear-gradient(135deg, #FFD700, #FFA500);
+          color: #2c3e50;
+          font-size: 9px;
+          font-weight: bold;
+          padding: 2px 8px;
+          border-radius: 20px;
+          margin-left: auto;
+          animation: premiumPulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes premiumPulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.05);
+          }
         }
         
         @media (max-width: 768px) {

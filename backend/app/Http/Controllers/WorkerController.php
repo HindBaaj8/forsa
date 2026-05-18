@@ -543,4 +543,60 @@ public function submitOffer(Request $request, $requestId)
         ], 500);
     }
 }
+// جلب الطلبات بدون حدود للبريميوم
+public function getUnlimitedRequests(Request $request)
+{
+    if (!$request->user()->isPremium()) {
+        return response()->json(['message' => 'Premium required'], 403);
+    }
+    
+    $requests = ServiceRequest::where('status', 'pending')
+        ->with('client')
+        ->latest()
+        ->get(); // ✅ بلا حدود
+    
+    return response()->json(['data' => $requests]);
+}
+
+// إرسال عروض بلا حدود
+public function submitUnlimitedOffer(Request $request, $requestId)
+{
+    if (!$request->user()->isPremium()) {
+        return response()->json(['message' => 'Premium required'], 403);
+    }
+    
+    // ✅ مفيش تحقق من عدد العروض
+    $offer = Offer::create([
+        'worker_id' => $request->user()->id,
+        'request_id' => $requestId,
+        'price' => $request->price,
+        'message' => $request->message,
+    ]);
+    
+    return response()->json(['data' => $offer]);
+}
+
+// Analytics للبريميوم
+public function premiumAnalytics(Request $request)
+{
+    if (!$request->user()->isPremium()) {
+        return response()->json(['message' => 'Premium required'], 403);
+    }
+    
+    $worker = $request->user();
+    
+    return response()->json([
+        'total_orders' => $worker->orders()->count(),
+        'completed_orders' => $worker->orders()->where('status', 'completed')->count(),
+        'total_revenue' => $worker->orders()->where('status', 'completed')->sum('price'),
+        'average_rating' => $worker->reviews()->avg('rating') ?? 0,
+        'response_time_avg' => $worker->conversations()->avg('response_time') ?? 0,
+        'services_count' => $worker->services()->count(),
+        'monthly_growth' => $worker->orders()
+            ->whereMonth('created_at', now()->month)
+            ->count() - $worker->orders()
+            ->whereMonth('created_at', now()->subMonth())
+            ->count()
+    ]);
+}
 }

@@ -83,6 +83,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 | SERVICES ROUTES
 |--------------------------------------------------------------------------
 */
+Route::get('/services/map', [ServiceController::class, 'getMapServices']);
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{service}', [ServiceController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
@@ -346,3 +347,29 @@ Route::middleware(['auth:sanctum', 'admin'])->get('/admin/payments/manual/pendin
 
 // رفض الدفع اليدوي
 Route::middleware(['auth:sanctum', 'admin'])->post('/payments/manual/reject/{paymentId}', [PaymentController::class, 'rejectManualPayment']);
+// Premium routes for workers
+Route::middleware(['auth:sanctum', 'premium'])->prefix('premium/worker')->group(function () {
+    Route::get('/unlimited-requests', [WorkerController::class, 'getUnlimitedRequests']);
+    Route::post('/offers/unlimited/{requestId}', [WorkerController::class, 'submitUnlimitedOffer']);
+    Route::get('/analytics', [WorkerController::class, 'premiumAnalytics']);
+    Route::get('/services/stats', [WorkerController::class, 'servicesAnalytics']);
+});
+
+// Premium Routes (Konnect)
+Route::middleware(['auth:sanctum'])->prefix('premium')->group(function () {
+    Route::get('/plans', [App\Http\Controllers\PremiumController::class, 'plans']);
+    Route::post('/card-payment', [App\Http\Controllers\PremiumController::class, 'createCardPayment']);
+    Route::post('/manual-request', [App\Http\Controllers\PremiumController::class, 'requestManualPayment']);
+    Route::post('/upload-receipt', [App\Http\Controllers\PremiumController::class, 'uploadReceipt']);
+    Route::get('/status', [App\Http\Controllers\PremiumController::class, 'checkStatus']);
+    Route::get('/my-payments', [App\Http\Controllers\PremiumController::class, 'myPayments']);
+});
+
+// Premium Webhook (بدون middleware)
+Route::post('/premium/webhook', [App\Http\Controllers\PremiumController::class, 'webhook']);
+
+// Admin: الموافقة على دفع يدوي
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin/premium')->group(function () {
+    Route::post('/approve/{paymentId}', [App\Http\Controllers\PremiumController::class, 'approveManualPayment']);
+    Route::post('/reject/{paymentId}', [App\Http\Controllers\PremiumController::class, 'rejectManualPayment']);
+});

@@ -10,6 +10,7 @@ export default function Modal({
   actions,
   onSave,
   saveText = 'حفظ',
+  className = '', // ✅ أضف هذا
 }) {
   useEffect(() => {
     if (isOpen) {
@@ -35,7 +36,7 @@ export default function Modal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className={`modal ${sizeClasses[size]}`}
+        className={`modal ${sizeClasses[size]} ${className}`} // ✅ أضف className هنا
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

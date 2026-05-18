@@ -7,12 +7,14 @@ import ClientLayout from '../layout/ClientLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import ServicesMap from './ServicesMap';
+import WorkerCard from '../common/WorkerCard';
 import '../../styles/Dashboard.css';
 
 export default function ClientSearch() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  
+  const [viewMode, setViewMode] = useState('list');
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,21 +25,17 @@ export default function ClientSearch() {
   const [favorites, setFavorites] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // جلب الخدمات مع منع الكاش
+  // جلب الخدمات
   const fetchServices = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
-        _: Date.now() // ✅ منع الكاش
-      };
+      const params = {};
       if (searchTerm) params.search = searchTerm;
       if (category) params.category_id = category;
       if (city) params.city = city;
       
       const response = await api.get('/services', { params });
-      console.log('📦 Services response:', response.data);
       
-      // ✅ استخراج الخدمات بالشكل الصحيح
       let servicesData = [];
       if (response.data?.data?.data) {
         servicesData = response.data.data.data;
@@ -45,12 +43,9 @@ export default function ClientSearch() {
         servicesData = response.data.data;
       } else if (Array.isArray(response.data)) {
         servicesData = response.data;
-      } else {
-        servicesData = [];
       }
       
       setServices(servicesData);
-      console.log('✅ Services loaded:', servicesData.length);
     } catch (error) {
       console.error('Error fetching services:', error);
       toast.error('حدث خطأ في تحميل الخدمات');
@@ -105,8 +100,6 @@ export default function ClientSearch() {
       return;
     }
     
-    console.log('📤 Starting conversation with:', { workerId, workerName });
-    
     try {
       await api.post('/conversations', { worker_id: Number(workerId) });
       toast.success(`تم بدء محادثة مع ${workerName}`);
@@ -143,12 +136,10 @@ export default function ClientSearch() {
     }
   };
 
-  // التحقق من المفضلة
   const isFavorite = (workerId) => {
     return favorites.some(f => (f.worker_id || f.id) === workerId);
   };
 
-  // تحديث يدوي
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchServices();
@@ -163,18 +154,22 @@ export default function ClientSearch() {
     fetchFavorites();
   }, []);
 
-  // تحديث عند تغيير الفلاتر
   useEffect(() => {
     fetchServices();
   }, [category, city]);
 
-  // بحث مع تأخير
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchTerm !== '') fetchServices();
     }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  // ✅ معالجة اختيار خدمة من الخريطة
+  const handleServiceSelect = (service) => {
+    console.log('Service selected from map:', service);
+    toast.success(`تم اختيار: ${service.title}`);
+  };
 
   if (loading) return <LoadingSpinner />;
 
@@ -229,92 +224,82 @@ export default function ClientSearch() {
         </div>
       </div>
 
-      <div className="workers-results">
-        <div className="results-count">
-          {services.length} خدمة متاحة
-          <button onClick={handleRefresh} className="refresh-btn" disabled={refreshing}>
-            🔄
-          </button>
-        </div>
-        <div className="workers-grid">
-          {services.length === 0 ? (
-            <div className="empty-state">
-              <div style={{ fontSize: 48 }}>🔍</div>
-              <h3>لا توجد خدمات</h3>
-              <p>حاول البحث بكلمات مختلفة</p>
-              <button onClick={handleRefresh} className="btn btn--navy">
-                🔄 تحديث
-              </button>
-            </div>
-          ) : (
-            services.map(service => (
-              <div key={service.id} className="worker-result-card">
-                <div className="worker-result-header">
-                  <div className="worker-avatar">
-                    {service.worker?.first_name?.[0] || service.worker?.first_name?.charAt(0) || 'م'}
-                  </div>
-                  <div>
-                    <div className="worker-name">
-                      {service.worker?.first_name || 'عامل'} {service.worker?.last_name || ''}
-                    </div>
-                    <div className="worker-profession">{service.category?.name || 'خدمة'}</div>
-                  </div>
-                  <div className="worker-rating">
-                    <Star size={14} /> {service.worker?.rating || service.rating || 0}
-                  </div>
-                </div>
-                <div className="worker-info">
-                  <span><MapPin size={14} /> {service.location || service.city || 'غير محدد'}</span>
-                  <span><Briefcase size={14} /> {service.worker?.completed_orders || 0} طلب</span>
-                </div>
-                <div className="worker-bio">{service.description?.substring(0, 100) || 'لا يوجد وصف'}...</div>
-                <div className="worker-price">{service.price || service.budget} درهم</div>
-                <div className="worker-actions">
-                  <button 
-                    className="btn btn--navy btn--sm"
-                    onClick={() => handleContact(service.worker_id || service.worker?.id, service.worker?.first_name || 'العامل')}
-                  >
-                    <MessageCircle size={14} /> تواصل الآن
-                  </button>
-                  <button 
-                    className={`btn btn--sm ${isFavorite(service.worker_id || service.worker?.id) ? 'btn--danger' : 'btn--ghost'}`}
-                    onClick={() => handleFavorite(service.worker_id || service.worker?.id)}
-                  >
-                    <Heart size={14} /> {isFavorite(service.worker_id || service.worker?.id) ? 'مفضل' : 'حفظ'}
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+      {/* ✅ أزرار تبديل العرض */}
+      <div className="view-toggle" style={{ display: 'flex', gap: '10px', marginBottom: '20px', justifyContent: 'flex-end' }}>
+        <button 
+          className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} 
+          onClick={() => setViewMode('list')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: '1px solid #ddd',
+            background: viewMode === 'list' ? '#2c3e50' : 'white',
+            color: viewMode === 'list' ? 'white' : '#333',
+            cursor: 'pointer'
+          }}
+        >
+          📋 قائمة
+        </button>
+        <button 
+          className={`view-btn ${viewMode === 'map' ? 'active' : ''}`} 
+          onClick={() => setViewMode('map')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: '1px solid #ddd',
+            background: viewMode === 'map' ? '#2c3e50' : 'white',
+            color: viewMode === 'map' ? 'white' : '#333',
+            cursor: 'pointer'
+          }}
+        >
+          🗺️ خريطة
+        </button>
       </div>
 
-      <style>{`
-        .refresh-btn {
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 16px;
-          margin-left: 10px;
-          padding: 4px 8px;
-          border-radius: 8px;
-          transition: all 0.3s;
-        }
-        .refresh-btn:hover {
-          background: #f0f0f0;
-        }
-        .refresh-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        .search-box-large {
-          display: flex;
-          gap: 10px;
-        }
-        .search-box-large input {
-          flex: 1;
-        }
-      `}</style>
+      {/* عرض حسب الوضع المختار */}
+      {viewMode === 'map' ? (
+        <ServicesMap 
+          categoryId={category || null}
+          searchTerm={searchTerm || ''}
+          onServiceSelect={handleServiceSelect}
+        />
+      ) : (
+        <div className="workers-results">
+          <div className="results-count">
+            {services.length} خدمة متاحة
+            <button onClick={handleRefresh} className="refresh-btn" disabled={refreshing}>
+              🔄
+            </button>
+          </div>
+          <div className="workers-grid">
+            {services.length === 0 ? (
+              <div className="empty-state">
+                <div style={{ fontSize: 48 }}>🔍</div>
+                <h3>لا توجد خدمات</h3>
+                <p>حاول البحث بكلمات مختلفة</p>
+                <button onClick={handleRefresh} className="btn btn--navy">
+                  🔄 تحديث
+                </button>
+              </div>
+            ) : (
+              services.map(service => (
+                <WorkerCard
+                  key={service.id}
+                  worker={service.worker || service.user}
+                  service={service}
+                  isFavorite={isFavorite(service.worker_id || service.user_id)}
+                  onContact={() => handleContact(
+                    service.worker_id || service.user_id, 
+                    service.worker?.first_name || service.user?.first_name
+                  )}
+                  onFavorite={() => handleFavorite(service.worker_id || service.user_id)}
+                  showActions={true}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </ClientLayout>
   );
 }

@@ -1,16 +1,43 @@
 import { useNavigate, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Shield, Star, MapPin, MessageSquare, 
   Wrench, Briefcase, Truck, Laptop, Scissors, BookOpen,
   ChevronRight, Search, Users, CheckCircle, Clock, Phone, Mail,
   ArrowRight, Zap, Award, Target, Heart, Eye, ThumbsUp, 
-  Lock, Headphones, Sparkles, Verified, CreditCard, Globe
+  Lock, Headphones, Sparkles, Verified, CreditCard, Globe,
+  Menu, X
 } from 'lucide-react';
 import '../styles/Home.css';
+
 export default function Home() {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Handle scroll effect for navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close mobile menu when clicking a link
+  const handleNavClick = (path) => {
+    setMobileMenuOpen(false);
+    if (path) navigate(path);
+  };
+
+  const scrollToSection = (sectionId) => {
+    setMobileMenuOpen(false);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -69,10 +96,55 @@ export default function Home() {
     { value: '98%', label: 'رضى العملاء', icon: <Heart size={24} /> },
   ];
 
+  const navLinks = [
+    { name: 'الرئيسية', id: 'home-hero', action: () => scrollToSection('home-hero') },
+    { name: 'الخدمات', id: 'services-section', action: () => scrollToSection('services-section') },
+    { name: 'مميزاتنا', id: 'features-section', action: () => scrollToSection('features-section') },
+    { name: 'كيف يعمل', id: 'steps-section', action: () => scrollToSection('steps-section') },
+    { name: 'آراء العملاء', id: 'testimonials-section', action: () => scrollToSection('testimonials-section') },
+  ];
+
   return (
     <div className="home-page">
+      {/* ========== STICKY NAVIGATION MENU (EN HAUT) ========== */}
+      <nav className={`premium-navbar ${scrolled ? 'scrolled' : ''}`}>
+        <div className="nav-container">
+          {/* Logo */}
+          <div className="nav-brand" onClick={() => { scrollToSection('home-hero'); setMobileMenuOpen(false); }}>
+            <Briefcase size={28} className="brand-icon" />
+            <span className="brand-text">فرصة <span>عمل</span></span>
+          </div>
+
+          {/* Desktop Navigation Links */}
+          <ul className={`nav-links ${mobileMenuOpen ? 'active' : ''}`}>
+            {navLinks.map((link, idx) => (
+              <li key={idx}>
+                <button onClick={link.action} className="nav-link-btn">
+                  {link.name}
+                </button>
+              </li>
+            ))}
+            <li>
+              <button className="nav-btn" onClick={() => handleNavClick('/auth?mode=register')}>
+                انضم الآن
+              </button>
+            </li>
+            <li>
+              <button className="nav-btn-outline" onClick={() => handleNavClick('/auth?mode=login')}>
+                تسجيل الدخول
+              </button>
+            </li>
+          </ul>
+
+          {/* Mobile Menu Toggle */}
+          <button className="menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+      </nav>
+
       {/* HERO SECTION */}
-      <section className="home-hero">
+      <section id="home-hero" className="home-hero">
         <div className="home-hero-bg">
           <div className="home-hero-blob1"></div>
           <div className="home-hero-blob2"></div>
@@ -94,7 +166,8 @@ export default function Home() {
               <button className="btn-primary" onClick={() => navigate('/auth?mode=register')}>
                 ابدأ مجاناً <ArrowRight size={18} />
               </button>
-              <button className="btn-outline" onClick={() => navigate('/how-it-works')}>
+              {/* FIXED: Button now scrolls to "كيف يعمل" section instead of broken navigate */}
+              <button className="btn-outline" onClick={() => scrollToSection('steps-section')}>
                 كيف يعمل الموقع؟
               </button>
             </div>
@@ -121,7 +194,7 @@ export default function Home() {
       </section>
 
       {/* SERVICES SECTION */}
-      <section className="home-services">
+      <section id="services-section" className="home-services">
         <div className="home-container">
           <div className="section-header">
             <span>خدماتنا</span>
@@ -141,7 +214,7 @@ export default function Home() {
       </section>
 
       {/* FEATURES SECTION */}
-      <section className="home-features">
+      <section id="features-section" className="home-features">
         <div className="home-container">
           <div className="section-header">
             <span>لماذا نحن</span>
@@ -187,7 +260,7 @@ export default function Home() {
       </section>
 
       {/* HOW IT WORKS SECTION */}
-      <section className="home-steps">
+      <section id="steps-section" className="home-steps">
         <div className="home-container">
           <div className="section-header">
             <span>كيف يعمل</span>
@@ -208,7 +281,7 @@ export default function Home() {
       </section>
 
       {/* TESTIMONIALS SECTION */}
-      <section className="home-testimonials">
+      <section id="testimonials-section" className="home-testimonials">
         <div className="home-container">
           <div className="section-header">
             <span>آراء المستخدمين</span>
@@ -244,7 +317,8 @@ export default function Home() {
               </div>
               <h2>الأسئلة <span className="text-gold">الشائعة</span></h2>
               <p>أجوبة على أكثر الأسئلة شيوعاً</p>
-              <button className="btn-outline" onClick={() => navigate('/contact')}>
+              {/* FIXED: Button now scrolls to footer contact section */}
+              <button className="btn-outline" onClick={() => scrollToSection('footer-contact-section')}>
                 تواصل معنا <ChevronRight size={16} />
               </button>
             </div>
@@ -276,8 +350,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="home-footer">
+      {/* FOOTER - Added id for contact section scrolling */}
+      <footer id="footer-contact-section" className="home-footer">
         <div className="home-container">
           <div className="footer-grid">
             <div className="footer-col brand-col">
@@ -288,9 +362,7 @@ export default function Home() {
               <p>منصة مغربية رائدة تربط بين الخدمات المهنية والعملاء بكل سهولة وأمان.</p>
               <div className="footer-social">
                 <a href="#" target="_blank" rel="noopener noreferrer">📘 فيسبوك</a>
-                <a href="#" target="_blank" rel="noopener noreferrer">🐦 تويتر</a>
                 <a href="#" target="_blank" rel="noopener noreferrer">📸 إنستغرام</a>
-                <a href="#" target="_blank" rel="noopener noreferrer">🔗 لينكدإن</a>
               </div>
             </div>
 
@@ -299,7 +371,7 @@ export default function Home() {
               <ul>
                 <li><button onClick={() => navigate('/')}>الرئيسية</button></li>
                 <li><button onClick={() => navigate('/services')}>الخدمات</button></li>
-                <li><button onClick={() => navigate('/how-it-works')}>كيف يعمل</button></li>
+                <li><button onClick={() => scrollToSection('steps-section')}>كيف يعمل</button></li>
                 <li><button onClick={() => navigate('/about')}>من نحن</button></li>
               </ul>
             </div>
@@ -327,9 +399,9 @@ export default function Home() {
             <div className="footer-col contact-col">
               <h4>تواصل معنا</h4>
               <ul className="footer-contact">
-                <li><Phone size={16} /> +212 5XX XXX XXX</li>
-                <li><Mail size={16} /> contact@forsa.ma</li>
-                <li><MapPin size={16} /> الدار البيضاء، المغرب</li>
+                <li><Phone size={16} /> 256 103 627  212+    </li>
+                <li><Mail size={16} /> forsatamal.app@gmail.com</li>
+                <li><MapPin size={16} /> طنجة، المغرب</li>
                 <li><Clock size={16} /> دعم 24/7</li>
               </ul>
             </div>
@@ -355,7 +427,7 @@ export default function Home() {
             <div className="footer-bottom-links">
               <button onClick={() => navigate('/privacy')}>سياسة الخصوصية</button>
               <button onClick={() => navigate('/terms')}>شروط الاستخدام</button>
-              <button onClick={() => navigate('/contact')}>اتصل بنا</button>
+              <button onClick={() => scrollToSection('footer-contact-section')}>اتصل بنا</button>
             </div>
           </div>
         </div>

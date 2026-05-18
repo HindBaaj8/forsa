@@ -12,47 +12,134 @@ class ServiceController extends Controller
      */
     public function index(Request $request)
 {
-    try {
-        $query = Service::with(['worker', 'category'])
-            ->where('approval_status', 'approved')
-            ->where('is_active', true);
+    $query = Service::with(['worker' => function($q) {
+            $q->select('id', 'first_name', 'last_name', 'rating', 'is_premium', 'premium_until');
+        }, 'category'])
+        ->where('approval_status', 'approved')
+        ->where('is_active', true);
 
-        // Filters
-        if ($request->has('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-        if ($request->has('city')) {
-            $query->where('location', 'like', '%' . $request->city . '%');
-        }
-        if ($request->has('search')) {
-            $query->where('title', 'like', '%' . $request->search . '%');
-        }
-        if ($request->has('min_price')) {
-            $query->where('price', '>=', $request->min_price);
-        }
-        if ($request->has('max_price')) {
-            $query->where('price', '<=', $request->max_price);
-        }
-
-        // ✅ Featured first
-        $query->orderByRaw('CASE WHEN is_featured = 1 AND featured_until > NOW() THEN 0 ELSE 1 END');
-        
-        // Sorting
-        $sortBy = $request->get('sort_by', 'latest');
-        switch ($sortBy) {
-            case 'price_low': $query->orderBy('price', 'asc'); break;
-            case 'price_high': $query->orderBy('price', 'desc'); break;
-            case 'oldest': $query->oldest(); break;
-            default: $query->latest(); break;
-        }
-
-        $services = $query->paginate($request->get('per_page', 20));
-
-        return response()->json(['success' => true, 'data' => $services]);
-    } catch (\Exception $e) {
-        return response()->json(['message' => 'Server error'], 500);
+    // ✅ الفلاتر الأساسية
+    if ($request->has('category_id')) {
+        $query->where('category_id', $request->category_id);
     }
+    if ($request->has('city')) {
+        $query->where('location', 'like', '%' . $request->city . '%');
+    }
+    if ($request->has('search')) {
+        $query->where('title', 'like', '%' . $request->search . '%');
+    }
+    
+    // ✅ ترتيب عادل (is_featured فقط، ماشي is_premium)
+    $query->orderByRaw('CASE WHEN is_featured = 1 AND featured_until > NOW() THEN 0 ELSE 1 END');
+    $query->latest();
+
+    $services = $query->paginate(20);
+    
+    // ✅ أضف معلومات الـ premium للـ response
+    $services->getCollection()->transform(function($service) {
+        $service->is_premium_service = false;
+        $service->premium_badge = null;
+        
+        if ($service->worker && $service->worker->is_premium) {
+            $service->is_premium_service = true;
+            $service->premium_badge = [
+                'text' => '⭐ عضوية مميزة',
+                'color' => 'gold',
+                'expires_at' => $service->worker->premium_until
+            ];
+        }
+        
+        return $service;
+    });
+
+    return response()->json([
+        'success' => true, 
+        'data' => $services,
+        'meta' => [
+            'current_page' => $services->currentPage(),
+            'total' => $services->total(),
+            'per_page' => $services->perPage(),
+        ]
+    ]);
 }
+    /**
+     * Display the specified service
+     */
+    public function show($id)
+    {
+        try {
+            $service = Service::with(['worker', 'category'])
+                ->where('approval_status', 'approved')
+                ->where('is_active', true)
+                ->findOrFail($id);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $service
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Service not found'
+            ], 404);
+        }
+    }
+
+    /**
+     * Get services for map (with coordinates)
+     */
+    public function getMapServices(Request $request)
+    {
+        try {
+            $query = Service::with(['worker', 'category'])
+                ->where('approval_status', 'approved')
+                ->where('is_active', true)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude');
+
+            // ✅ تطبيق الفلاتر
+            if ($request->has('category_id') && $request->category_id) {
+                $query->where('category_id', $request->category_id);
+            }
+            
+            if ($request->has('city') && $request->city) {
+                $query->where('location', 'like', '%' . $request->city . '%');
+            }
+            
+            if ($request->has('search') && $request->search) {
+                $query->where('title', 'like', '%' . $request->search . '%');
+            }
+
+            $services = $query->get(['id', 'title', 'latitude', 'longitude', 'price', 'worker_id', 'category_id', 'location'])
+                ->map(function($service) {
+                    return [
+                        'id' => $service->id,
+                        'title' => $service->title,
+                        'latitude' => (float) $service->latitude,
+                        'longitude' => (float) $service->longitude,
+                        'price' => (float) $service->price,
+                        'location' => $service->location,
+                        'worker_name' => $service->worker ? ($service->worker->first_name . ' ' . $service->worker->last_name) : 'مقدم خدمة',
+                        'worker_rating' => $service->worker ? (float) ($service->worker->rating ?? 0) : 0,
+                        'category_icon' => $service->category ? ($service->category->icon ?? '📍') : '📍',
+                        'category_name' => $service->category ? $service->category->name : 'خدمة'
+                    ];
+                });
+
+            return response()->json([
+                'success' => true, 
+                'data' => $services,
+                'count' => $services->count()
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching map services: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     /**
      * Store a newly created service
      */
@@ -65,8 +152,11 @@ class ServiceController extends Controller
                 'description' => 'required|string',
                 'price' => 'required|numeric|min:0',
                 'location' => 'required|string',
+                'latitude' => 'nullable|numeric|between:-90,90',
+                'longitude' => 'nullable|numeric|between:-180,180'
             ]);
 
+            // ✅ تخزين الموقع إذا وجد
             $service = Service::create([
                 'worker_id' => auth()->id(),
                 'category_id' => $validated['category_id'],
@@ -74,22 +164,29 @@ class ServiceController extends Controller
                 'description' => $validated['description'],
                 'price' => $validated['price'],
                 'location' => $validated['location'],
+                'latitude' => $validated['latitude'] ?? null,
+                'longitude' => $validated['longitude'] ?? null,
                 'approval_status' => 'pending',
                 'is_active' => true,
             ]);
 
             return response()->json([
-                'success' => true,
-                'message' => 'Service created successfully',
-                'data' => $service
+                'success' => true, 
+                'data' => $service,
+                'message' => 'Service created successfully'
             ], 201);
+            
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'message' => 'Validation failed',
+                'success' => false,
+                'message' => 'Validation error',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -99,7 +196,10 @@ class ServiceController extends Controller
     public function update(Request $request, Service $service)
     {
         if ($service->worker_id !== auth()->id() && auth()->user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
         try {
@@ -109,6 +209,8 @@ class ServiceController extends Controller
                 'description' => 'sometimes|string',
                 'price' => 'sometimes|numeric|min:0',
                 'location' => 'sometimes|string',
+                'latitude' => 'nullable|numeric|between:-90,90',
+                'longitude' => 'nullable|numeric|between:-180,180',
                 'is_active' => 'sometimes|boolean',
             ]);
 
@@ -119,8 +221,12 @@ class ServiceController extends Controller
                 'message' => 'Service updated successfully',
                 'data' => $service
             ]);
+            
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -130,17 +236,24 @@ class ServiceController extends Controller
     public function destroy(Service $service)
     {
         if ($service->worker_id !== auth()->id() && auth()->user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
         try {
             $service->delete();
             return response()->json([
                 'success' => true,
-                'message' => 'Service deleted'
+                'message' => 'Service deleted successfully'
             ]);
+            
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -150,18 +263,25 @@ class ServiceController extends Controller
     public function toggle(Service $service)
     {
         if ($service->worker_id !== auth()->id() && auth()->user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
         try {
             $service->update(['is_active' => !$service->is_active]);
             return response()->json([
                 'success' => true,
-                'message' => 'Service toggled',
+                'message' => 'Service toggled successfully',
                 'data' => $service
             ]);
+            
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -171,7 +291,10 @@ class ServiceController extends Controller
     public function approve(Service $service)
     {
         if (auth()->user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
         try {
@@ -179,12 +302,17 @@ class ServiceController extends Controller
                 'approval_status' => 'approved',
                 'approved_at' => now(),
             ]);
+            
             return response()->json([
                 'success' => true,
-                'message' => 'Service approved'
+                'message' => 'Service approved successfully'
             ]);
+            
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -194,7 +322,10 @@ class ServiceController extends Controller
     public function reject(Request $request, Service $service)
     {
         if (auth()->user()->role !== 'admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
         }
 
         try {
@@ -206,12 +337,17 @@ class ServiceController extends Controller
                 'approval_status' => 'rejected',
                 'rejection_reason' => $validated['reason'],
             ]);
+            
             return response()->json([
                 'success' => true,
-                'message' => 'Service rejected'
+                'message' => 'Service rejected successfully'
             ]);
+            
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Server error'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

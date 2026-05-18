@@ -1,7 +1,7 @@
 // components/worker/WorkerServices.jsx
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Edit, Trash2, Power, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, Star, PlusCircle } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../common/Modal';
@@ -10,7 +10,8 @@ import Button from '../common/Button';
 import { getWorkerServices, createService, updateService, deleteService, toggleService } from '../../features/worker/workerSlice';
 import BuyFeatured from './BuyFeatured';
 import { toast } from 'react-hot-toast';
-import '../../styles/Dashboard.css';
+import api from '../../services/api';
+import '../../styles/WorkerServices.css';
 
 const CATEGORIES = [
   { id: 1, value: 'electrical', label: 'كهرباء', icon: '⚡' },
@@ -29,10 +30,12 @@ export default function WorkerServices() {
   const [editingService, setEditingService] = useState(null);
   const [showFeaturedModal, setShowFeaturedModal] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+  const [customCategory, setCustomCategory] = useState(false); // ✅ لتحديد إذا كان التصنيف جديد
   const [formData, setFormData] = useState({ 
     title: '', 
     description: '', 
     category: '', 
+    customCategoryName: '', // ✅ اسم التصنيف الجديد
     price: '', 
     city: '', 
     is_active: true 
@@ -41,51 +44,23 @@ export default function WorkerServices() {
 
   const servicesArray = Array.isArray(services) ? services : [];
 
-  // ✅ أضف هاد useEffect للتصحيح
-  useEffect(() => {
-    console.log('🔍 DEBUG - services from Redux:', services);
-    console.log('🔍 DEBUG - servicesArray length:', servicesArray.length);
-    console.log('🔍 DEBUG - services IDs:', servicesArray.map(s => s.id));
-  }, [services, servicesArray]);
-
   useEffect(() => {
     const loadServices = async () => {
-      console.log('🔄 Loading services...');
       const result = await dispatch(getWorkerServices());
-      console.log('📦 Result:', result);
-      console.log('📦 Payload:', result.payload);
     };
     loadServices();
   }, [dispatch]);
 
-  useEffect(() => {
-    console.log('✅ Services in Redux updated:', services);
-  }, [services]);
-
-  useEffect(() => {
-    if (error) {
-      console.error('❌ Error:', error);
-      toast.error(typeof error === 'string' ? error : 'حدث خطأ');
-    }
-  }, [error]);
-// أضف هاد useEffect
-useEffect(() => {
-  const checkServices = async () => {
-    const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:8000/api/worker/services', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await response.json();
-    console.log('🔍 Direct API call:', data);
-    console.log('🔍 Services in response:', data.services || data.data);
-  };
-  checkServices();
-}, []);
   const validate = () => {
     const e = {};
     if (!formData.title.trim()) e.title = 'العنوان مطلوب';
     if (!formData.description.trim()) e.description = 'الوصف مطلوب';
-    if (!formData.category) e.category = 'نوع الخدمة مطلوب';
+    
+    // ✅ التحقق من نوع الخدمة (إما من القائمة أو تصنيف جديد)
+    if (!formData.category && !formData.customCategoryName.trim()) {
+      e.category = 'نوع الخدمة مطلوب';
+    }
+    
     if (!formData.price) e.price = 'السعر مطلوب';
     else if (isNaN(formData.price) || Number(formData.price) <= 0) e.price = 'السعر غير صحيح';
     if (!formData.city.trim()) e.city = 'المدينة مطلوبة';
@@ -96,47 +71,61 @@ useEffect(() => {
   const handleSave = async () => {
     if (!validate()) return;
     
-    const selectedCategory = CATEGORIES.find(c => c.value === formData.category);
+    let categoryId = null;
+    
+    // ✅ إذا اختار تصنيف جديد
+    if (customCategory && formData.customCategoryName.trim()) {
+      // إرسال اسم التصنيف الجديد للـ backend
+      categoryId = 'new_' + formData.customCategoryName.trim();
+    } 
+    // ✅ إذا اختار من القائمة
+    else if (formData.category) {
+      const selectedCategory = CATEGORIES.find(c => c.value === formData.category);
+      categoryId = selectedCategory?.id;
+    }
     
     const submitData = {
-      category_id: selectedCategory?.id,
+      category_id: categoryId,
       title: formData.title,
       description: formData.description,
       price: Number(formData.price),
       location: formData.city,
     };
     
-    console.log('📤 Sending data:', submitData);
+    // ✅ إذا كان تصنيف جديد، نضيف اسم التصنيف
+    if (customCategory && formData.customCategoryName.trim()) {
+      submitData.category_name = formData.customCategoryName.trim();
+    }
     
     try {
       let result;
       if (editingService) {
         result = await dispatch(updateService({ id: editingService.id, data: submitData })).unwrap();
-        console.log('✅ Update result:', result);
         toast.success('تم تحديث الخدمة');
       } else {
         result = await dispatch(createService(submitData)).unwrap();
-        console.log('✅ Create result:', result);
         toast.success('تم إضافة الخدمة');
       }
       setModalOpen(false);
       setEditingService(null);
-      setFormData({ title: '', description: '', category: '', price: '', city: '', is_active: true });
+      setCustomCategory(false);
+      setFormData({ title: '', description: '', category: '', customCategoryName: '', price: '', city: '', is_active: true });
       await dispatch(getWorkerServices());
     } catch (err) {
       console.error('❌ Error:', err);
-      const errorMessage = typeof err === 'string' ? err : err?.message || 'حدث خطأ';
-      toast.error(errorMessage);
+      toast.error(err?.message || 'حدث خطأ');
     }
   };
 
   const handleEdit = (service) => {
     const categoryValue = CATEGORIES.find(c => c.id === service.category_id)?.value || '';
     setEditingService(service);
+    setCustomCategory(!categoryValue);
     setFormData({ 
       title: service.title, 
       description: service.description, 
       category: categoryValue,
+      customCategoryName: categoryValue ? '' : (service.category?.name || ''),
       price: service.price, 
       city: service.location,
       is_active: service.is_active 
@@ -174,7 +163,8 @@ useEffect(() => {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
         <Button variant="gold" icon={Plus} onClick={() => { 
           setEditingService(null); 
-          setFormData({ title: '', description: '', category: '', price: '', city: '', is_active: true }); 
+          setCustomCategory(false);
+          setFormData({ title: '', description: '', category: '', customCategoryName: '', price: '', city: '', is_active: true }); 
           setModalOpen(true); 
         }}>إضافة خدمة جديدة</Button>
       </div>
@@ -194,13 +184,13 @@ useEffect(() => {
             return (
               <div key={service.id || index} className={`service-card ${isFeatured ? 'featured' : ''}`}>
                 <div className="service-card__header">
-                  <div className="service-card__icon">{category?.icon || '🔧'}</div>
+                  <div className="service-card__icon">{category?.icon || service.category?.icon || '🔧'}</div>
                   <div>
                     <h3 className="service-card__title">
                       {service.title}
                       {isFeatured && <span className="featured-badge">⭐ مميز</span>}
                     </h3>
-                    <div className="service-card__category">{category?.label}</div>
+                    <div className="service-card__category">{category?.label || service.category?.name || 'خدمة عامة'}</div>
                   </div>
                   <button className={`service-card__toggle ${service.is_active ? 'active' : ''}`} onClick={() => handleToggle(service.id)}>
                     <Power size={14} />
@@ -234,30 +224,94 @@ useEffect(() => {
       )}
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingService ? 'تعديل الخدمة' : 'إضافة خدمة جديدة'} onSave={handleSave} saveText={editingService ? 'حفظ التغييرات' : 'إضافة الخدمة'}>
-        <Input label="عنوان الخدمة" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} error={errors.title} required />
+        <Input 
+          label="عنوان الخدمة" 
+          value={formData.title} 
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })} 
+          error={errors.title} 
+          required 
+        />
         
         <div className="form-group">
           <label className="form-label">وصف الخدمة *</label>
-          <textarea className={`form-input ${errors.description ? 'err' : ''}`} rows="4" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="وصف تفصيلي للخدمة..." />
+          <textarea 
+            className={`form-input ${errors.description ? 'err' : ''}`} 
+            rows="4" 
+            value={formData.description} 
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+            placeholder="وصف تفصيلي للخدمة..."
+          />
           {errors.description && <span className="form-err">{errors.description}</span>}
         </div>
         
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">نوع الخدمة *</label>
-            <select className={`form-input ${errors.category ? 'err' : ''}`} value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-              <option value="">اختر نوع الخدمة</option>
-              {CATEGORIES.map(c => (
-                <option key={c.id} value={c.value}>{c.icon} {c.label}</option>
-              ))}
-            </select>
-            {errors.category && <span className="form-err">{errors.category}</span>}
-          </div>
+        {/* ✅ حقل نوع الخدمة - Input مفتوح مع زر لإضافة تصنيف جديد */}
+        <div className="form-group">
+          <label className="form-label">نوع الخدمة *</label>
           
-          <Input label="السعر (درهم/ساعة)" type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} error={errors.price} required />
+          {!customCategory ? (
+            <div className="category-select-wrapper">
+              <select 
+                className={`form-input ${errors.category ? 'err' : ''}`} 
+                value={formData.category} 
+                onChange={(e) => {
+                  setFormData({ ...formData, category: e.target.value });
+                  if (e.target.value === 'other') {
+                    setCustomCategory(true);
+                  }
+                }}
+              >
+                <option value="">اختر نوع الخدمة</option>
+                {CATEGORIES.map(c => (
+                  <option key={c.id} value={c.value}>{c.icon} {c.label}</option>
+                ))}
+                <option value="other">➕ إضافة نوع خدمة جديد...</option>
+              </select>
+              {errors.category && <span className="form-err">{errors.category}</span>}
+            </div>
+          ) : (
+            <div className="category-custom-wrapper">
+              <input
+                type="text"
+                className={`form-input ${errors.category ? 'err' : ''}`}
+                value={formData.customCategoryName}
+                onChange={(e) => setFormData({ ...formData, customCategoryName: e.target.value })}
+                placeholder="اكتب نوع الخدمة الجديد (مثال: حدادة، تبليط، صيانة...)"
+                autoFocus
+              />
+              <button
+                type="button"
+                className="btn-cancel-category"
+                onClick={() => {
+                  setCustomCategory(false);
+                  setFormData({ ...formData, customCategoryName: '', category: '' });
+                }}
+              >
+                إلغاء
+              </button>
+              {errors.category && <span className="form-err">{errors.category}</span>}
+              <small className="form-hint">يمكنك إضافة أي نوع خدمة غير موجود في القائمة</small>
+            </div>
+          )}
         </div>
         
-        <Input label="المدينة" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} error={errors.city} required />
+        <div className="form-row">
+          <Input 
+            label="السعر (درهم/ساعة)" 
+            type="number" 
+            value={formData.price} 
+            onChange={(e) => setFormData({ ...formData, price: e.target.value })} 
+            error={errors.price} 
+            required 
+          />
+        </div>
+        
+        <Input 
+          label="المدينة" 
+          value={formData.city} 
+          onChange={(e) => setFormData({ ...formData, city: e.target.value })} 
+          error={errors.city} 
+          required 
+        />
       </Modal>
 
       {showFeaturedModal && (
@@ -271,6 +325,53 @@ useEffect(() => {
           }}
         />
       )}
+
+      <style>{`
+        .category-select-wrapper {
+          position: relative;
+        }
+        
+        .category-custom-wrapper {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+        
+        .category-custom-wrapper input {
+          flex: 1;
+        }
+        
+        .btn-cancel-category {
+          padding: 10px 16px;
+          background: var(--gray100);
+          border: 1px solid var(--gray200);
+          border-radius: var(--r-sm);
+          color: var(--text3);
+          cursor: pointer;
+          font-size: 13px;
+          white-space: nowrap;
+        }
+        
+        .btn-cancel-category:hover {
+          background: var(--gray200);
+        }
+        
+        .form-hint {
+          display: block;
+          margin-top: 6px;
+          font-size: 11px;
+          color: var(--text3);
+        }
+        
+        .form-row {
+          display: flex;
+          gap: 16px;
+        }
+        
+        .form-row .form-group {
+          flex: 1;
+        }
+      `}</style>
     </WorkerLayout>
   );
 }

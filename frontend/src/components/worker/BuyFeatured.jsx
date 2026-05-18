@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import '../../styles/BuyFeatured.css';
 import { Star, CreditCard, X, Clock, Wallet, ArrowLeft } from 'lucide-react';
 
 export default function BuyFeatured({ serviceId, serviceTitle, onClose, onSuccess }) {

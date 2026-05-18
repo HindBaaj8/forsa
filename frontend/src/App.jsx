@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectIsAuthenticated, selectUserRole } from './features/auth/authSelectors';
 import { useRealtime } from './hooks/useRealtime';
-
+import SubscribePremium from './components/worker/SubscribePremium';
 import './styles/global.css';
 import './styles/variables.css';
 import './styles/Dashboard.css';
@@ -84,6 +84,8 @@ function App() {
         </ProtectedRoute>
       } />
 
+
+      <Route path="/worker/subscribe" element={<SubscribePremium />} />
       {/* ========== CLIENT ROUTES ========== */}
       <Route path="/client" element={
         <ProtectedRoute allowedRoles={['client']}>

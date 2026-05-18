@@ -1,11 +1,13 @@
 // components/worker/WorkerDashboard.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { DollarSign, ShoppingBag, CheckCircle, Star, Briefcase, MessageCircle, Calendar } from 'lucide-react';
+import { DollarSign, ShoppingBag, CheckCircle, Star, Briefcase, MessageCircle, Calendar, Crown, TrendingUp, Clock } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getWorkerDashboard } from '../../features/worker/workerSlice';
+import api from '../../services/api';
+import { toast } from 'react-hot-toast';
 import '../../styles/Dashboard.css';
 
 function StatCard({ title, value, icon: Icon, color }) {
@@ -22,14 +24,100 @@ function StatCard({ title, value, icon: Icon, color }) {
   );
 }
 
+// ✅ Premium Analytics Component
+function PremiumAnalytics({ analytics }) {
+  if (!analytics) return null;
+  
+  return (
+    <div className="premium-analytics-card">
+      <div className="premium-analytics-header">
+        <Crown size={20} className="premium-icon" />
+        <span>تحليلات متقدمة (Premium)</span>
+      </div>
+      <div className="premium-analytics-grid">
+        <div className="analytics-item">
+          <div className="analytics-value">{analytics.monthly_growth || 0}%</div>
+          <div className="analytics-label">نمو شهري</div>
+        </div>
+        <div className="analytics-item">
+          <div className="analytics-value">{analytics.response_time_avg || 0} د</div>
+          <div className="analytics-label">متوسط وقت الرد</div>
+        </div>
+        <div className="analytics-item">
+          <div className="analytics-value">{analytics.completion_rate || 0}%</div>
+          <div className="analytics-label">نسبة الإنجاز</div>
+        </div>
+        <div className="analytics-item">
+          <div className="analytics-value">{analytics.total_views || 0}</div>
+          <div className="analytics-label">عدد المشاهدات</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ✅ Premium Features Badge
+function PremiumBadge({ isPremium, premiumUntil }) {
+  if (!isPremium) return null;
+  
+  return (
+    <div className="premium-badge-container">
+      <div className="premium-badge-large">
+        <Crown size={18} />
+        <span>عضوية Premium</span>
+      </div>
+      {premiumUntil && (
+        <div className="premium-expiry">
+          <Clock size={12} />
+          <span>حتى {new Date(premiumUntil).toLocaleDateString('ar')}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WorkerDashboard() {
   const dispatch = useDispatch();
   const { dashboard, isLoading } = useSelector((state) => state.worker);
   const { user } = useSelector((state) => state.auth);
+  const [premiumAnalytics, setPremiumAnalytics] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [unlimitedRequestsCount, setUnlimitedRequestsCount] = useState(0);
+
+  // ✅ جلب التحليلات للبريميوم
+  const fetchPremiumAnalytics = async () => {
+    if (!user?.is_premium) return;
+    
+    setLoadingAnalytics(true);
+    try {
+      const response = await api.get('/premium/worker/analytics');
+      setPremiumAnalytics(response.data);
+    } catch (error) {
+      console.error('Error fetching premium analytics:', error);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  // ✅ جلب عدد الطلبات غير المحدودة
+  const fetchUnlimitedRequests = async () => {
+    if (!user?.is_premium) return;
+    
+    try {
+      const response = await api.get('/premium/worker/unlimited-requests');
+      setUnlimitedRequestsCount(response.data?.data?.length || 0);
+    } catch (error) {
+      console.error('Error fetching unlimited requests:', error);
+    }
+  };
 
   useEffect(() => {
     dispatch(getWorkerDashboard());
-  }, [dispatch]);
+    if (user?.is_premium) {
+      fetchPremiumAnalytics();
+      fetchUnlimitedRequests();
+    }
+  }, [dispatch, user?.is_premium]);
 
   if (isLoading) return <LoadingSpinner fullPage />;
 
@@ -42,12 +130,16 @@ export default function WorkerDashboard() {
           <h1 className="welcome-section__title">مرحباً, {user?.first_name} 👋</h1>
           <p className="welcome-section__subtitle">استعد لتقديم أفضل الخدمات لعملائك</p>
         </div>
-        <Link to="/worker/services">
-          <button className="btn btn--gold">➕ إضافة خدمة جديدة</button>
-        </Link>
+        <div className="welcome-actions">
+          {/* ✅ Premium Badge */}
+          <PremiumBadge isPremium={user?.is_premium} premiumUntil={user?.premium_until} />
+          <Link to="/worker/services">
+            <button className="btn btn--gold">➕ إضافة خدمة جديدة</button>
+          </Link>
+        </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* ✅ Stats Grid */}
       <div className="stats-grid">
         <StatCard title="إجمالي الأرباح" value={`${stats.totalEarnings || 0} درهم`} icon={DollarSign} color="gold" />
         <StatCard title="خدماتي" value={stats.totalServices || 0} icon={ShoppingBag} color="navy" />
@@ -55,7 +147,31 @@ export default function WorkerDashboard() {
         <StatCard title="التقييم" value={stats.rating || 0} icon={Star} color="yellow" />
       </div>
 
-      {/* ✅ آخر الطلبات (Orders) */}
+      {/* ✅ Premium Analytics (فقط للبريميوم) */}
+      {user?.is_premium && premiumAnalytics && !loadingAnalytics && (
+        <PremiumAnalytics analytics={premiumAnalytics} />
+      )}
+
+      {/* ✅ Premium Feature: Unlimited Requests */}
+      {user?.is_premium && (
+        <div className="premium-feature-card">
+          <div className="premium-feature-header">
+            <Crown size={20} />
+            <span>ميزة البريميوم</span>
+          </div>
+          <div className="premium-feature-content">
+            <div className="feature-item">
+              <TrendingUp size={18} />
+              <span>طلبات غير محدودة: {unlimitedRequestsCount}+ طلب متاح</span>
+            </div>
+            <Link to="/worker/requests">
+              <button className="btn btn--gold btn--sm">استعراض جميع الطلبات →</button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* آخر الطلبات (Orders) */}
       <div className="card">
         <div className="card-title">
           آخر الطلبات
