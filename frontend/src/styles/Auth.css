@@ -1,13 +1,38 @@
 /* ============================================================
    Auth.css — فرصة عمل
-   Blue Marine #0a2647 / #144272  +  Yellow #FFC800
-   Covers: Auth, EmailVerification, RequestOtpReset, VerifyOtp,
-           ResetPasswordOtp
+   Brand colors from logo:
+     Navy deep  : #0f2550
+     Navy mid   : #1a3a6e
+     Blue figure: #1e4fa0
+     Gold/Yellow: #d4a017
+     Gold light : #e8b820
+   Covers: Auth, EmailVerification, RequestOtpReset,
+           VerifyOtp, ResetPasswordOtp
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap');
 
-/* ── Reset & base ──────────────────────────────────────────── */
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+  --navy:        #1a3a6e;
+  --navy-deep:   #0f2550;
+  --navy-mid:    #1e4fa0;
+  --gold:        #d4a017;
+  --gold-light:  #e8b820;
+  --gold-bg:     #fdf6e3;
+  --page-bg:     #f0f4fa;
+  --white:       #ffffff;
+  --border:      #cddaed;
+  --input-bg:    #f4f7fc;
+  --text-main:   #0f2550;
+  --text-muted:  #7189a8;
+  --text-light:  #a0b3c9;
+  --error:       #c0392b;
+  --error-bg:    #fff3f3;
+  --error-border:#f5c6c6;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -16,10 +41,15 @@
   padding: 0;
 }
 
-/* ── Page wrapper (Auth.jsx) ───────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   AUTH PAGE WRAPPER
+══════════════════════════════════════════════════════════════ */
 .auth-page {
   min-height: 100vh;
-  background: #eef2f7;
+  background: var(--page-bg);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(30,79,160,0.07) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(212,160,23,0.05) 0%, transparent 50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,11 +62,14 @@
 .auth-container {
   display: flex;
   width: 100%;
-  max-width: 840px;
+  max-width: 860px;
   min-height: 540px;
-  border-radius: 22px;
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 24px 64px rgba(10, 38, 71, 0.16);
+  box-shadow:
+    0 2px 4px rgba(15,37,80,0.04),
+    0 8px 24px rgba(15,37,80,0.10),
+    0 24px 64px rgba(15,37,80,0.14);
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -44,7 +77,7 @@
 ══════════════════════════════════════════════════════════════ */
 .auth-left {
   width: 38%;
-  background: linear-gradient(160deg, #0a2647 0%, #144272 55%, #0d3260 100%);
+  background: linear-gradient(155deg, #0f2550 0%, #1a3a6e 45%, #1e4fa0 100%);
   padding: 2.5rem 2rem;
   display: flex;
   flex-direction: column;
@@ -53,66 +86,66 @@
   overflow: hidden;
 }
 
-/* decorative circles */
 .auth-left::before {
   content: '';
   position: absolute;
-  top: -80px;
-  right: -80px;
-  width: 240px;
-  height: 240px;
+  top: -90px;
+  right: -90px;
+  width: 260px;
+  height: 260px;
   border-radius: 50%;
-  background: rgba(255, 200, 0, 0.07);
-  pointer-events: none;
-}
-.auth-left::after {
-  content: '';
-  position: absolute;
-  bottom: -60px;
-  left: -60px;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: rgba(255, 200, 0, 0.05);
+  background: rgba(212,160,23,0.08);
   pointer-events: none;
 }
 
-/* brand */
+.auth-left::after {
+  content: '';
+  position: absolute;
+  bottom: -50px;
+  left: -50px;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: rgba(212,160,23,0.06);
+  pointer-events: none;
+}
+
+/* ── Brand ─────────────────────────────────────────────────── */
 .auth-left__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   cursor: pointer;
   position: relative;
   z-index: 1;
 }
 
 .auth-left__brand-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 11px;
-  background: #FFC800;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--gold);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   font-weight: 900;
-  color: #0a2647;
+  color: var(--navy-deep);
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(212,160,23,0.4);
 }
 
 .auth-left__brand-name {
   font-size: 22px;
   font-weight: 700;
   color: #fff;
-  letter-spacing: 0.3px;
 }
 
 .auth-left__brand-gold {
-  color: #FFC800;
+  color: var(--gold-light);
 }
 
-/* center content */
+/* ── Center content ────────────────────────────────────────── */
 .auth-left__content {
   text-align: center;
   position: relative;
@@ -120,16 +153,16 @@
 }
 
 .auth-left__icon {
-  width: 72px;
-  height: 72px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
-  background: rgba(255, 200, 0, 0.12);
-  border: 2px solid rgba(255, 200, 0, 0.28);
+  background: rgba(212,160,23,0.13);
+  border: 2px solid rgba(212,160,23,0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
-  margin: 0 auto 1rem;
+  font-size: 32px;
+  margin: 0 auto 1.1rem;
 }
 
 .auth-left__content h2 {
@@ -140,16 +173,16 @@
 }
 
 .auth-left__content p {
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255,255,255,0.55);
   font-size: 13px;
-  line-height: 1.75;
+  line-height: 1.8;
 }
 
-/* bottom feature list */
+/* ── Feature list ──────────────────────────────────────────── */
 .auth-left__features {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
   position: relative;
   z-index: 1;
 }
@@ -158,15 +191,15 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255,255,255,0.62);
   font-size: 12.5px;
 }
 
 .auth-left__feature-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #FFC800;
+  background: var(--gold);
   flex-shrink: 0;
 }
 
@@ -175,8 +208,8 @@
 ══════════════════════════════════════════════════════════════ */
 .auth-right {
   flex: 1;
-  background: #fff;
-  padding: 2.2rem 2rem;
+  background: var(--white);
+  padding: 2.4rem 2.2rem;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -185,12 +218,13 @@
 /* ── Tabs ──────────────────────────────────────────────────── */
 .auth-tabs {
   display: flex;
-  gap: 0;
-  margin-bottom: 1.6rem;
-  border-radius: 11px;
+  margin-bottom: 1.8rem;
+  border-radius: 12px;
   overflow: hidden;
-  border: 1.5px solid #dce7f3;
-  background: #f3f7fb;
+  border: 1.5px solid var(--border);
+  background: var(--input-bg);
+  padding: 4px;
+  gap: 4px;
 }
 
 .auth-tab {
@@ -198,25 +232,23 @@
   padding: 10px 0;
   border: none;
   background: transparent;
+  border-radius: 9px;
   font-family: 'Tajawal', sans-serif;
   font-size: 14px;
   font-weight: 500;
-  color: #7a9bba;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.22s, color 0.22s;
 }
 
 .auth-tab.active {
-  background: #0a2647;
+  background: var(--navy);
   color: #fff;
+  box-shadow: 0 2px 8px rgba(15,37,80,0.2);
 }
 
-.auth-tab:first-child {
-  border-radius: 9px 0 0 9px;
-}
-
-.auth-tab:last-child {
-  border-radius: 0 9px 9px 0;
+.auth-tab:not(.active):hover {
+  color: var(--navy);
 }
 
 /* ── Role picker ───────────────────────────────────────────── */
@@ -229,22 +261,24 @@
 .role-card {
   flex: 1;
   padding: 14px 8px;
-  border-radius: 12px;
-  border: 2px solid #dce7f3;
+  border-radius: 13px;
+  border: 2px solid var(--border);
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.15s;
-  background: #f8fbff;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+  background: var(--input-bg);
 }
 
 .role-card:hover {
-  border-color: #a8c4de;
-  transform: translateY(-1px);
+  border-color: #9ab4d8;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(15,37,80,0.08);
 }
 
 .role-card.active {
-  border-color: #FFC800;
-  background: #fffbea;
+  border-color: var(--gold);
+  background: var(--gold-bg);
+  box-shadow: 0 4px 16px rgba(212,160,23,0.18);
 }
 
 .role-card__icon {
@@ -254,8 +288,8 @@
 
 .role-card__label {
   font-size: 13px;
-  font-weight: 600;
-  color: #0a2647;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 /* ── Form layout ───────────────────────────────────────────── */
@@ -274,7 +308,7 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: #0a2647;
+  color: var(--text-main);
   margin-bottom: 6px;
 }
 
@@ -283,30 +317,30 @@
   width: 100%;
   padding: 11px 14px;
   border-radius: 10px;
-  border: 1.5px solid #d4e3f0;
+  border: 1.5px solid var(--border);
   font-family: 'Tajawal', sans-serif;
   font-size: 14px;
-  color: #0a2647;
-  background: #f5f9fd;
+  color: var(--text-main);
+  background: var(--input-bg);
   outline: none;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .form-input::placeholder {
-  color: #adc0d4;
+  color: var(--text-light);
 }
 
 .form-input:hover {
-  border-color: #a8c4de;
+  border-color: #9ab4d8;
 }
 
 .form-input:focus {
-  border-color: #144272;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(20, 66, 114, 0.08);
+  border-color: var(--navy-mid);
+  background: var(--white);
+  box-shadow: 0 0 0 3.5px rgba(30,79,160,0.10);
 }
 
-/* ── Field wrapper (icon + eye toggle) ─────────────────────── */
+/* ── Field wrapper ─────────────────────────────────────────── */
 .field-wrap {
   position: relative;
 }
@@ -316,10 +350,14 @@
   top: 50%;
   transform: translateY(-50%);
   right: 13px;
-  color: #adc0d4;
+  color: var(--text-light);
   pointer-events: none;
   display: flex;
   align-items: center;
+}
+
+.field-wrap .form-input {
+  padding-right: 40px;
 }
 
 .field-eye {
@@ -330,7 +368,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #8aa5be;
+  color: var(--text-light);
   display: flex;
   align-items: center;
   padding: 0;
@@ -338,47 +376,36 @@
 }
 
 .field-eye:hover {
-  color: #0a2647;
+  color: var(--navy);
 }
 
-/* input with right icon */
-.field-wrap .form-input {
-  padding-right: 40px;
-}
-
-/* input with left eye */
-.field-wrap .form-input[type="password"],
-.field-wrap .form-input[type="text"] {
-  padding-left: 38px;
-}
-
-/* ── Hint & error ──────────────────────────────────────────── */
+/* ── Messages ──────────────────────────────────────────────── */
 .form-hint {
   display: block;
   font-size: 11.5px;
-  color: #9ab4cb;
+  color: var(--text-light);
   margin-top: 4px;
 }
 
 .form-err {
   display: block;
   font-size: 11.5px;
-  color: #d63031;
+  color: var(--error);
   margin-top: 4px;
 }
 
 .error-box {
-  background: #fff3f3;
-  border: 1.5px solid #f5c6c6;
+  background: var(--error-bg);
+  border: 1.5px solid var(--error-border);
   border-radius: 10px;
   padding: 10px 14px;
-  color: #c0392b;
+  color: var(--error);
   font-size: 13px;
   margin-bottom: 14px;
   font-weight: 500;
 }
 
-/* ── Meta row (remember me + forgot) ──────────────────────── */
+/* ── Meta row ──────────────────────────────────────────────── */
 .form-meta {
   display: flex;
   justify-content: space-between;
@@ -391,89 +418,107 @@
   align-items: center;
   gap: 7px;
   font-size: 13px;
-  color: #6b8099;
+  color: var(--text-muted);
   cursor: pointer;
 }
 
 .form-link {
   background: none;
   border: none;
-  color: #144272;
+  color: var(--navy-mid);
   font-size: 13px;
   font-family: 'Tajawal', sans-serif;
   cursor: pointer;
   font-weight: 500;
   transition: color 0.2s;
+  padding: 0;
 }
 
 .form-link:hover {
-  color: #FFC800;
+  color: var(--gold);
 }
 
-/* ── Terms row ─────────────────────────────────────────────── */
+/* ── Terms ─────────────────────────────────────────────────── */
 .form-terms {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #6b8099;
+  color: var(--text-muted);
   margin: 8px 0 14px;
   cursor: pointer;
 }
 
 .form-terms a {
-  color: #144272;
+  color: var(--navy-mid);
   text-decoration: none;
   font-weight: 500;
 }
 
 .form-terms a:hover {
   text-decoration: underline;
+  color: var(--gold);
 }
 
-/* ── Submit button ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   BUTTON — Gold brand, navy text
+══════════════════════════════════════════════════════════════ */
 .btn-submit {
   width: 100%;
   padding: 13px;
   border-radius: 11px;
   border: none;
-  background: #FFC800;
-  color: #0a2647;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+  color: var(--navy-deep);
   font-family: 'Tajawal', sans-serif;
   font-size: 15px;
   font-weight: 800;
   cursor: pointer;
-  letter-spacing: 0.3px;
-  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-  box-shadow: 0 4px 16px rgba(255, 200, 0, 0.35);
+  letter-spacing: 0.2px;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  box-shadow: 0 4px 18px rgba(212,160,23,0.38);
   position: relative;
   overflow: hidden;
 }
 
+.btn-submit::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+  transition: left 0.45s ease;
+}
+
+.btn-submit:hover::after {
+  left: 160%;
+}
+
 .btn-submit:hover {
-  background: #e6b400;
+  opacity: 0.93;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(255, 200, 0, 0.45);
+  box-shadow: 0 6px 24px rgba(212,160,23,0.48);
 }
 
 .btn-submit:active {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(255, 200, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(212,160,23,0.3);
 }
 
 .btn-submit:disabled {
-  opacity: 0.65;
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-/* spinner inside button */
 .spinner {
   display: inline-block;
   width: 18px;
   height: 18px;
-  border: 2.5px solid rgba(10, 38, 71, 0.25);
-  border-top-color: #0a2647;
+  border: 2.5px solid rgba(15,37,80,0.22);
+  border-top-color: var(--navy-deep);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   vertical-align: middle;
@@ -484,11 +529,14 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   FORGOT / OTP / RESET pages  (shared card layout)
+   FORGOT / OTP / RESET pages
 ══════════════════════════════════════════════════════════════ */
 .forgot-container {
   min-height: 100vh;
-  background: #eef2f7;
+  background: var(--page-bg);
+  background-image:
+    radial-gradient(circle at 15% 15%, rgba(30,79,160,0.07) 0%, transparent 50%),
+    radial-gradient(circle at 85% 85%, rgba(212,160,23,0.05) 0%, transparent 50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -498,25 +546,28 @@
 }
 
 .forgot-card {
-  background: #fff;
+  background: var(--white);
   border-radius: 22px;
-  padding: 2.5rem 2.2rem;
+  padding: 2.6rem 2.4rem;
   max-width: 440px;
   width: 100%;
-  box-shadow: 0 16px 48px rgba(10, 38, 71, 0.13);
+  box-shadow:
+    0 2px 4px rgba(15,37,80,0.04),
+    0 8px 24px rgba(15,37,80,0.10),
+    0 20px 48px rgba(15,37,80,0.12);
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  border-top: 4px solid var(--gold);
 }
 
-/* back button */
 .back-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: none;
   border: none;
-  color: #7a9bba;
+  color: var(--text-muted);
   font-size: 13px;
   font-family: 'Tajawal', sans-serif;
   cursor: pointer;
@@ -528,45 +579,48 @@
 }
 
 .back-btn:hover {
-  color: #0a2647;
+  color: var(--navy);
 }
 
-/* icon circle */
 .forgot-icon {
-  width: 76px;
-  height: 76px;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
-  background: #eef4fb;
-  border: 2px solid #d4e3f0;
+  background: linear-gradient(135deg, #e8f0fb, #dce9f8);
+  border: 2px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 32px;
-  margin: 0 auto 1.2rem;
+  margin: 0 auto 1.3rem;
 }
 
 .forgot-card h2 {
   font-size: 21px;
   font-weight: 700;
-  color: #0a2647;
+  color: var(--text-main);
   text-align: center;
   margin-bottom: 8px;
 }
 
 .forgot-card > p {
   font-size: 13.5px;
-  color: #7a9bba;
+  color: var(--text-muted);
   text-align: center;
-  line-height: 1.75;
+  line-height: 1.8;
   margin-bottom: 1.6rem;
 }
 
 .reset-email {
   font-size: 14px;
-  font-weight: 600;
-  color: #144272;
+  font-weight: 700;
+  color: var(--navy-mid);
   text-align: center;
   margin-bottom: 1rem;
+  background: #eef4fb;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
 }
 
 /* ── OTP inputs ────────────────────────────────────────────── */
@@ -579,32 +633,33 @@
 }
 
 .otp-input {
-  width: 50px;
-  height: 56px;
-  border-radius: 12px;
-  border: 2px solid #d4e3f0;
+  width: 52px;
+  height: 58px;
+  border-radius: 13px;
+  border: 2px solid var(--border);
   text-align: center;
   font-size: 22px;
   font-weight: 700;
-  color: #0a2647;
-  background: #f5f9fd;
+  color: var(--text-main);
+  background: var(--input-bg);
   outline: none;
   font-family: 'Tajawal', sans-serif;
-  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.12s;
 }
 
 .otp-input:focus {
-  border-color: #FFC800;
-  background: #fffdf0;
-  box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.18);
+  border-color: var(--gold);
+  background: var(--gold-bg);
+  box-shadow: 0 0 0 3.5px rgba(212,160,23,0.18);
+  transform: translateY(-2px);
 }
 
 .otp-input:not(:placeholder-shown) {
-  border-color: #144272;
-  background: #fff;
+  border-color: var(--navy-mid);
+  background: var(--white);
 }
 
-/* resend area */
+/* ── Resend ─────────────────────────────────────────────────── */
 .resend-area {
   text-align: center;
   margin-top: 18px;
@@ -612,13 +667,13 @@
 
 .resend-area span {
   font-size: 13px;
-  color: #9ab4cb;
+  color: var(--text-light);
 }
 
 .resend-area button {
   background: none;
   border: none;
-  color: #144272;
+  color: var(--navy-mid);
   font-size: 13px;
   font-family: 'Tajawal', sans-serif;
   font-weight: 600;
@@ -627,7 +682,7 @@
 }
 
 .resend-area button:hover {
-  color: #FFC800;
+  color: var(--gold);
 }
 
 .resend-area button:disabled {
@@ -635,51 +690,47 @@
   cursor: not-allowed;
 }
 
-/* ── Password strength hint ────────────────────────────────── */
-.form-group .form-hint {
-  display: block;
-  font-size: 12px;
-  color: #9ab4cb;
-  margin-top: 5px;
-}
-
-/* ── Responsive ────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
   .auth-container {
     flex-direction: column;
-    max-width: 100%;
     border-radius: 18px;
   }
 
   .auth-left {
     width: 100%;
-    padding: 1.8rem 1.5rem;
-    min-height: 180px;
+    padding: 1.6rem 1.4rem;
   }
 
-  .auth-left__content {
-    display: none;
-  }
-
+  .auth-left__content,
   .auth-left__features {
     display: none;
   }
 
   .auth-right {
-    padding: 1.5rem;
+    padding: 1.6rem 1.4rem;
   }
 
   .form-row {
     grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .otp-inputs {
+    gap: 8px;
   }
 
   .otp-input {
-    width: 42px;
-    height: 48px;
+    width: 44px;
+    height: 50px;
     font-size: 18px;
+    border-radius: 10px;
   }
 
   .forgot-card {
-    padding: 2rem 1.5rem;
+    padding: 2rem 1.4rem;
+    border-radius: 18px;
   }
 }
