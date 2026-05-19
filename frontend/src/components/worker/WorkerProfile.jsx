@@ -9,7 +9,6 @@ import { updateWorkerProfile } from '../../features/worker/workerSlice';
 import { updateUser } from '../../features/auth/authSlice';
 import { toast } from 'react-hot-toast';
 import '../../styles/Dashboard.css';
-
 export default function WorkerProfile() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);

@@ -1,7 +1,7 @@
 // components/worker/WorkerServices.jsx
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Plus, Edit, Trash2, Power, Star, PlusCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Power, Star } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import LoadingSpinner from '../common/LoadingSpinner';
 import Modal from '../common/Modal';
@@ -10,7 +10,6 @@ import Button from '../common/Button';
 import { getWorkerServices, createService, updateService, deleteService, toggleService } from '../../features/worker/workerSlice';
 import BuyFeatured from './BuyFeatured';
 import { toast } from 'react-hot-toast';
-import api from '../../services/api';
 import '../../styles/WorkerServices.css';
 
 const CATEGORIES = [
@@ -24,7 +23,7 @@ const CATEGORIES = [
 
 export default function WorkerServices() {
   const dispatch = useDispatch();
-  const { services = [], isLoading, error } = useSelector((state) => state.worker);
+  const { services = [], isLoading} = useSelector((state) => state.worker);
   
   const [modalOpen, setModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
