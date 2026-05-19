@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Shield, CreditCard, LogOut, Trash2, DollarSign } from 'lucide-react';
+import { Bell, Shield, LogOut, Trash2, DollarSign } from 'lucide-react';
 import WorkerLayout from '../layout/WorkerLayout';
 import { logout } from '../../features/auth/authSlice';
 import { toast } from 'react-hot-toast';

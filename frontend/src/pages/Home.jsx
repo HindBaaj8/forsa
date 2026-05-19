@@ -1,10 +1,10 @@
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { 
   Shield, Star, MapPin, MessageSquare, 
   Wrench, Briefcase, Truck, Laptop, Scissors, BookOpen,
   ChevronRight, Search, Users, CheckCircle, Clock, Phone, Mail,
-  ArrowRight, Zap, Award, Target, Heart, Eye, ThumbsUp, 
+  ArrowRight, Zap, Award, Target, Heart, ThumbsUp, 
   Lock, Headphones, Sparkles, Verified, CreditCard, Globe,
   Menu, X
 } from 'lucide-react';
@@ -361,8 +361,7 @@ export default function Home() {
               </div>
               <p>منصة مغربية رائدة تربط بين الخدمات المهنية والعملاء بكل سهولة وأمان.</p>
               <div className="footer-social">
-                <a href="#" target="_blank" rel="noopener noreferrer">📘 فيسبوك</a>
-                <a href="#" target="_blank" rel="noopener noreferrer">📸 إنستغرام</a>
+                <button>📘 فيسبوك</button><button>📸 إنستغرام</button>
               </div>
             </div>
 
